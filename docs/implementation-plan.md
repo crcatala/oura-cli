@@ -218,7 +218,7 @@ Shared daily-summary pattern (endpoint → single doc or day-filtered list → o
 - [x] Stable keys in JSON (`day`, `id`, `timestamp_unix` for dedup)
 - [x] Stdin-free, no interactive prompts (agent-safe); all prompts opt-in
 - [x] JSON error envelope for machine consumers + human-readable stderr
-- [ ] `oura doctor` — credential source, token expiry, endpoint reachability (ouracli inspiration)
+- [x] `oura doctor` — credential source, token expiry, endpoint reachability (ouracli inspiration)
 
 ---
 

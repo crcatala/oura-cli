@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -372,6 +372,165 @@ describe("CLI integration (mocked fetch)", () => {
     const params = new URL(workoutUrl).searchParams;
     expect(params.get("start_date")).toBe("2026-01-18");
     expect(params.get("end_date")).toBe("2026-01-19");
+  });
+
+  it("today --table renders the section summary", async () => {
+    const cap = capture();
+    const code = await main(["--table", "today", "--date", "2026-01-18"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Section");
+    expect(cap.out()).toContain("Sleep");
+    expect(cap.out()).toContain("Readiness");
+    expect(cap.out()).toContain("Activity");
+    // Fixture only fills sleep/readiness/activity; the rest degrade gracefully.
+    expect(cap.out()).toContain("no data yet");
+    expect(cap.out()).toContain("sync the Oura app");
+  });
+
+  it("today --plain renders the briefing lines", async () => {
+    const cap = capture();
+    const code = await main(["--plain", "today", "--date", "2026-01-18"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Date: 2026-01-18");
+    expect(cap.out()).toContain("Sleep");
+    expect(cap.out()).toContain("80"); // sleep score
+    expect(cap.out()).toContain("Deep 70");
+  });
+
+  it("today --sections restricts the human rows and the sync hint", async () => {
+    const cap = capture();
+    const code = await main(
+      ["--table", "today", "--date", "2026-01-18", "--sections", "stress"],
+      env(),
+      {
+        fetcher: fixtureFetcher() as unknown as typeof fetch,
+        stdout: cap.stdout,
+        stderr: cap.stderr,
+      },
+    );
+    expect(code).toBe(0);
+    // Only the requested section renders (fixture stress is empty).
+    expect(cap.out()).toContain("Stress");
+    expect(cap.out()).not.toContain("Sleep");
+    expect(cap.out()).toContain("Note: no data yet for Stress");
+  });
+
+  it("doctor --json with env credentials reports healthy checks", async () => {
+    const cap = capture();
+    const code = await main(["--json", "doctor"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    const report = JSON.parse(cap.out());
+    expect(report.sandbox).toBe(false);
+    expect(report.summary.errors).toBe(0);
+    const creds = report.checks.find((c: { name: string }) => c.name === "credentials");
+    expect(creds.status).toBe("ok");
+    expect(creds.detail).toContain("env");
+    const api = report.checks.find((c: { name: string }) => c.name === "api reachability");
+    expect(api.status).toBe("ok");
+  });
+
+  it("doctor exits 1 with a DOCTOR_FAILED envelope when credentials are missing", async () => {
+    const cap = capture();
+    const code = await main(
+      ["--json", "doctor"],
+      { OURA_CONFIG_DIR: join(mkdtempSync(join(tmpdir(), "oura-cli-int-")), "cfg") },
+      {
+        fetcher: fixtureFetcher() as unknown as typeof fetch,
+        stdout: cap.stdout,
+        stderr: cap.stderr,
+      },
+    );
+    expect(code).toBe(1);
+    const report = JSON.parse(cap.out());
+    expect(report.summary.errors).toBeGreaterThan(0);
+    const envelope = JSON.parse(cap.err());
+    expect(envelope.error.code).toBe("DOCTOR_FAILED");
+    expect(envelope.error.kind).toBe("doctor");
+  });
+
+  it("doctor flags an expired stored token (exit 1)", async () => {
+    const dir = join(mkdtempSync(join(tmpdir(), "oura-cli-int-")), "config");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "credentials.json"),
+      JSON.stringify({
+        accessToken: "stale-at",
+        refreshToken: "stale-rt",
+        grantedScopes: ["extapi:daily"],
+        expiresAt: Date.now() - 60_000,
+        updatedAt: Date.now(),
+      }),
+    );
+    const cap = capture();
+    const code = await main(
+      ["--json", "doctor"],
+      { OURA_CONFIG_DIR: dir, OURA_USE_CONFIG: "1" },
+      {
+        fetcher: fixtureFetcher() as unknown as typeof fetch,
+        stdout: cap.stdout,
+        stderr: cap.stderr,
+      },
+    );
+    expect(code).toBe(1);
+    const report = JSON.parse(cap.out());
+    const expiry = report.checks.find((c: { name: string }) => c.name === "token expiry");
+    expect(expiry.status).toBe("error");
+    expect(expiry.detail).toContain("expired");
+  });
+
+  it("doctor reports API failures as errors (exit 1)", async () => {
+    const cap = capture();
+    const base = fixtureFetcher();
+    const failing = async (url: string, init?: RequestInit) => {
+      if (url.includes("/daily_activity")) {
+        return new Response(JSON.stringify({ detail: "boom" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return base(url, init);
+    };
+    const code = await main(["--json", "doctor"], env(), {
+      fetcher: failing as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(1);
+    const report = JSON.parse(cap.out());
+    const api = report.checks.find((c: { name: string }) => c.name === "api reachability");
+    expect(api.status).toBe("error");
+    expect(api.detail).toContain("boom");
+  });
+
+  it("doctor --sandbox needs no credentials and exits 0", async () => {
+    const cap = capture();
+    const code = await main(
+      ["--json", "--sandbox", "doctor"],
+      {},
+      {
+        fetcher: fixtureFetcher() as unknown as typeof fetch,
+        stdout: cap.stdout,
+        stderr: cap.stderr,
+      },
+    );
+    expect(code).toBe(0);
+    const report = JSON.parse(cap.out());
+    expect(report.sandbox).toBe(true);
+    expect(report.summary.errors).toBe(0);
+    const creds = report.checks.find((c: { name: string }) => c.name === "credentials");
+    expect(creds.status).toBe("ok");
   });
 
   it("usage errors exit 2", async () => {

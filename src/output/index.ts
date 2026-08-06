@@ -86,7 +86,8 @@ export function formatTable<T>(data: T | T[], columns: ColumnConfig[]): string {
 }
 
 export type OutputOptions = {
-  formatter?: (data: unknown) => string;
+  /** Renders human-readable output; receives the active format (plain/table). */
+  formatter?: (data: unknown, format: "plain" | "table") => string;
   columns?: ColumnConfig[];
 };
 
@@ -113,13 +114,15 @@ export function output(ctx: CliContext, data: unknown, options: OutputOptions = 
     case "table":
       if (options.columns) {
         writeOut(formatTable(data, options.columns));
+      } else if (options.formatter) {
+        writeOut(options.formatter(data, "table"));
       } else {
         writeOut(JSON.stringify(data, null, 2));
       }
       break;
     default:
       if (options.formatter) {
-        writeOut(options.formatter(data));
+        writeOut(options.formatter(data, "plain"));
       } else {
         writeOut(JSON.stringify(data, null, 2));
       }

@@ -78,11 +78,12 @@ the no-slash variant (`http://localhost:9876/callback`) with `invalid_redirect_u
 
 | Command | Description |
 |---|---|
-| `today [--date] [--sections csv]` | Composite morning briefing: sleep, readiness, activity, stress, SpO2, resilience, ring battery |
+| `today [--date] [--sections csv]` | Composite morning briefing: sleep, readiness, activity, stress, SpO2, resilience, ring battery; `--table`/`--plain` render a per-section summary |
 | `sleep \| readiness \| activity \| stress \| resilience \| spo2 \| vo2max` | Daily summaries; `--date`, `--days N`, `--start/--end` |
 | `heartrate --start <iso> --end <iso> [--bucket avg\|min\|max\|count]` | Heart rate samples aggregated per hour (Gen3+); JSON carries avg/min/max/count per hour |
 | `workouts [--date \| --days N \| --start/--end]` | Workout sessions: activity, calories, distance, intensity, source |
 | `profile` | Personal info (age, sex, weight, height, email) |
+| `doctor` | Diagnostics: credential source, token expiry, scopes, storage permissions, API reachability; exits 1 when a problem is found |
 | `auth login \| status \| logout` | OAuth2 lifecycle |
 
 Global flags: `--json` `--plain` `--table` `--quiet` `--no-color` `--verbose` `--sandbox` `--port <n>`.
@@ -108,4 +109,4 @@ npm run typecheck
 npm run test:live # gated: requires OURA_CLIENT_ID + OURA_CLIENT_SECRET
 ```
 
-Not in v1 (see [`docs/implementation-plan.md`](docs/implementation-plan.md) Non-Goals): webhooks, tags, offline cache/digest, sessions/sleep-time/cardiovascular age, multi-user OAuth. Remaining before M3 release: `oura doctor`, `today --table` format decision, npm publish (`release-it`), live-test of the loopback login flow, and the auth-required exit-code decision (see [`PLAN.md`](PLAN.md)).
+Not in v1 (see [`docs/implementation-plan.md`](docs/implementation-plan.md) Non-Goals): webhooks, tags, offline cache/digest, sessions/sleep-time/cardiovascular age, multi-user OAuth. Remaining before M3 release: npm publish (`release-it`), live-test of the loopback login flow, and the auth-required exit-code decision (see [`PLAN.md`](PLAN.md)).

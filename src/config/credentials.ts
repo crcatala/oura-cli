@@ -102,16 +102,20 @@ export function createStore(opts: { useConfig?: boolean; configDir?: string }): 
   // Lazily resolve the backing store on first use, so commands that never
   // touch credentials (--help, env-token data commands) never load keytar.
   let backing: Promise<CredentialStore> | null = null;
+  let resolved: CredentialStore | null = null;
   const get = () => (backing ??= resolveBackingStore(opts.configDir));
+  const resolve = async (): Promise<CredentialStore> => {
+    resolved ??= await get();
+    return resolved;
+  };
   return {
     get type() {
-      // We can't know the type until resolution — default to "config"
-      // before first use (only informational commands reach this path).
-      return backing ? (backing as unknown as { type: CredentialSource }).type : "config";
+      // Accurate after the first load/save/clear resolves the backend.
+      return resolved ? resolved.type : "config";
     },
-    load: async () => (await get()).load(),
-    save: async (c) => (await get()).save(c),
-    clear: async () => (await get()).clear(),
+    load: async () => (await resolve()).load(),
+    save: async (c) => (await resolve()).save(c),
+    clear: async () => (await resolve()).clear(),
   };
 }
 

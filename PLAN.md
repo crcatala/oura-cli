@@ -51,8 +51,8 @@ tests/ unit(4) + integration(1)   # 83 tests, all green
 ## Remaining work (M3 — Release)
 
 ### Phase 4: Agent optimization & polish (small)
-- [ ] `oura doctor` — credential source, token expiry, endpoint reachability (the only missing command; everything else in Phase 4 — `--quiet`, JSON error envelopes, stable keys, stdin-free — is already implemented)
-- [ ] `today --table` format decision — `today` is currently JSON-only; `--table` falls back to JSON for the composite
+- [x] `oura doctor` — credential source, token expiry, endpoint reachability (the only missing command; everything else in Phase 4 — `--quiet`, JSON error envelopes, stable keys, stdin-free — is already implemented)
+- [x] `today --table` format decision — `today` is currently JSON-only; `--table` falls back to JSON for the composite
 - [ ] `--quiet` on composite `today` — emits nothing today (no top-level `id`); decide a sensible quiet shape
 - [ ] Settle auth-required exit code: implementation uses **exit 3**; plan §1.4 revision says exit 1 + code `AUTH_REQUIRED` (cli-starter convention). Pick one, update code + docs, record in `cli-playbook.md` (collection-wide — see followups register item 4)
 
@@ -64,7 +64,7 @@ tests/ unit(4) + integration(1)   # 83 tests, all green
 
 ### Pre-release checklist
 - [ ] Live-verify the full OAuth2 loopback login flow against a real Oura app (login → status → refresh rotation → logout/revoke)
-- [ ] Decide the `today --quiet` / `--table` shapes above
+- [x] Decide the `today --quiet` / `--table` shapes above — `--table`/`--plain` ship as a per-section briefing; `--quiet` on `today` remains open
 - [ ] Document the auth-required pattern in the collection's `cli-playbook.md` (monorepo)
 - [ ] Add live-test creds as repo secrets (needed once live tests run in CI)
 
