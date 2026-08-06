@@ -18,7 +18,7 @@ import type {
   Workout,
 } from "../types.js";
 import { nextDay } from "../utils/date.js";
-import { AuthRequiredError, OuraApiError } from "../utils/errors.js";
+import { AuthError, OuraApiError } from "../utils/errors.js";
 import { collectionBase, ENDPOINTS } from "./endpoints.js";
 import { collectPages } from "./pagination.js";
 export type Fetcher = typeof fetch;
@@ -224,7 +224,7 @@ export class OuraClient {
 
   private async request<T>(endpoint: string, params: Record<string, string>): Promise<T> {
     if (!this.accessToken && !this.sandbox) {
-      throw new AuthRequiredError("No credentials configured", "Run: oura auth login");
+      throw new AuthError("No credentials configured", "Run: oura auth login");
     }
     const url = new URL(`${this.baseUrl}/${endpoint}`);
     for (const [k, v] of Object.entries(params)) {
@@ -248,7 +248,7 @@ export class OuraClient {
 
   private doFetch(url: URL): Promise<Response> {
     if (!this.accessToken && !this.sandbox) {
-      throw new AuthRequiredError("No credentials configured", "Run: oura auth login");
+      throw new AuthError("No credentials configured", "Run: oura auth login");
     }
     return this.fetcher(url.toString(), {
       headers: { Authorization: `Bearer ${this.accessToken}` },
@@ -268,7 +268,7 @@ export class OuraClient {
 
   private async doRefresh(): Promise<void> {
     if (!this.refreshToken || !this.clientId || !this.clientSecret) {
-      throw new AuthRequiredError(
+      throw new AuthError(
         "Access token expired and no refresh credentials configured",
         "Run: oura auth login",
       );

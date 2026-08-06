@@ -167,7 +167,7 @@ oura-cli/
 ### 1.4 Output & Date Utils
 - [ ] JSON when stdout is not a TTY; `--json/--plain/--table/--quiet`; `--no-color`; `NO_COLOR`; `-v/--verbose` and `--debug` global flags (cli-starter's `logVerbose`/`logDebug` in the output module this plan reuses depend on both; without them they're dead code)
 - [ ] Date shortcuts: `today`, `yesterday`, `--days N`, `--start/--end`, ISO dates; validate + typed 422 errors
-- [ ] Exit codes: 0 success / 1 general / 2 usage / 130 interrupted; "auth required" is a typed `AuthError` (exit 1, code `AUTH_REQUIRED`) matching cli-starter's error classes — no bespoke exit code 3
+- [x] Exit codes: 0 success / 1 general / 2 usage / 130 interrupted; "auth required" is a typed `AuthError` (exit 1, code `AUTH_REQUIRED`) matching cli-starter's error classes — no bespoke exit code 3
 
 ### 1.5 Deliverables
 - [ ] `oura auth login/status/logout` working end-to-end against a real Oura app (dev)
@@ -244,4 +244,4 @@ Shared daily-summary pattern (endpoint → single doc or day-filtered list → o
 1. Repo location/name: new repo `oura-cli` (matches collection) — confirm bin name `oura` (no conflicts?) — **resolved:** repo `crcatala/oura-cli`; bins `oura` + `oura-cli`. npm name conflict (`oura` is taken by the Go project) still open for Phase 5 publishing.
 2. Scope of `today`: include workouts + heartrate summary, or just daily summaries? (default: daily summaries + ring battery) — **resolved:** daily summaries + ring battery.
 3. Include `--sandbox` as a first-class demo flag? (recommended: yes — doubles as fixture source) — **resolved:** yes, implemented.
-4. Keep `oura doctor` in v1 or defer? (default: v1, it's cheap and useful for the collection) — **open:** planned for M3 (Phase 4); not yet implemented.
+4. Keep `oura doctor` in v1 or defer? (default: v1, it's cheap and useful for the collection) — **resolved:** shipped in M2/M3 polish (credential source, token expiry, scopes, storage permissions, API reachability).

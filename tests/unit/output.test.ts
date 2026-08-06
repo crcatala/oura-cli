@@ -56,6 +56,12 @@ describe("output", () => {
     expect(out().trim().split("\n")).toEqual(["a1", "a2"]);
   });
 
+  it("emits a custom quietKey for composites without an id", () => {
+    const { ctx, out } = capture(["--quiet"]);
+    output(ctx, { date: "2026-01-18", sleep: { score: 80 } }, { quietKey: "date" });
+    expect(out().trim()).toBe("2026-01-18");
+  });
+
   it("handles null data (missing docs) without crashing", () => {
     const { ctx, out } = capture(["--json"]);
     output(ctx, null);

@@ -1,9 +1,13 @@
 /**
  * Typed errors with stable exit codes (clig.dev contract):
- *   0 success | 1 general | 2 usage | 3 auth required | 130 interrupted
+ *   0 success | 1 general | 2 usage | 130 interrupted
+ *
+ * "Auth required" is a typed `AuthError` (exit 1, code `AUTH_REQUIRED`)
+ * matching the collection's cli-starter convention — no bespoke exit code 3.
+ * The JSON error envelope carries the machine-readable code.
  */
 
-export const EXIT = { OK: 0, GENERAL: 1, USAGE: 2, AUTH: 3, INTERRUPTED: 130 } as const;
+export const EXIT = { OK: 0, GENERAL: 1, USAGE: 2, INTERRUPTED: 130 } as const;
 
 export type ErrorEnvelope = {
   error: {
@@ -50,11 +54,22 @@ export class UsageError extends CliError {
   }
 }
 
-export class AuthRequiredError extends CliError {
+export class AuthError extends CliError {
   readonly kind = "auth";
   constructor(message = "No valid Oura credentials", hint?: string) {
-    super(message, { exitCode: EXIT.AUTH, hint: hint ?? "Run: oura auth login" });
-    this.name = "AuthRequiredError";
+    super(message, { exitCode: EXIT.GENERAL, hint: hint ?? "Run: oura auth login" });
+    this.name = "AuthError";
+  }
+
+  toEnvelope(): ErrorEnvelope {
+    return {
+      error: {
+        kind: this.kind,
+        code: "AUTH_REQUIRED",
+        message: this.message,
+        ...(this.hint ? { hint: this.hint } : {}),
+      },
+    };
   }
 }
 
@@ -65,7 +80,9 @@ export class OuraApiError extends CliError {
 
   constructor(status: number, body: string) {
     const detail = extractDetail(body);
-    super(detail, { exitCode: status === 401 ? EXIT.AUTH : EXIT.GENERAL });
+    // 401s are auth-related but exit 1 like any general error; the envelope
+    // code (http_401) + hint keep them machine-distinguishable.
+    super(detail, { exitCode: EXIT.GENERAL });
     this.name = "OuraApiError";
     this.status = status;
     this.body = body;

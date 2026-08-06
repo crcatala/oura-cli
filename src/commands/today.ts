@@ -91,6 +91,9 @@ export function registerToday(program: Command, ctx: CliContext, client: OuraCli
 
       output(ctx, filtered, {
         formatter: (data, format) => formatBriefing(data as TodayBriefing, format, requested),
+        // Quiet mode prints the date: `today` has no single document id, and
+        // the date is the key other date-based commands chain on.
+        quietKey: "date",
       });
     });
 }

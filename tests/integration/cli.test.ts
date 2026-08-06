@@ -374,6 +374,17 @@ describe("CLI integration (mocked fetch)", () => {
     expect(params.get("end_date")).toBe("2026-01-19");
   });
 
+  it("today --quiet prints the resolved date", async () => {
+    const cap = capture();
+    const code = await main(["--quiet", "today", "--date", "2026-01-18"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(cap.out()).toBe("2026-01-18\n");
+  });
+
   it("today --table renders the section summary", async () => {
     const cap = capture();
     const code = await main(["--table", "today", "--date", "2026-01-18"], env(), {
@@ -543,7 +554,7 @@ describe("CLI integration (mocked fetch)", () => {
     expect(code).toBe(2);
   });
 
-  it("requires credentials for data commands (exit 3, absent token)", async () => {
+  it("requires credentials for data commands (exit 1, code AUTH_REQUIRED)", async () => {
     const cap = capture();
     const code = await main(
       ["--json", "sleep", "--date", "2026-01-18"],
@@ -556,7 +567,10 @@ describe("CLI integration (mocked fetch)", () => {
         stderr: cap.stderr,
       },
     );
-    expect(code).toBe(3);
+    expect(code).toBe(1);
+    const envelope = JSON.parse(cap.err());
+    expect(envelope.error.kind).toBe("auth");
+    expect(envelope.error.code).toBe("AUTH_REQUIRED");
   });
 
   it("refresh persistence rotates tokens stored in the config file", async () => {
@@ -589,7 +603,8 @@ describe("CLI integration (mocked fetch)", () => {
         stderr: cap.stderr,
       },
     );
-    expect(code).toBe(3); // second attempt also 401s (fixture always 401s) → auth error
+    // Second attempt also 401s (fixture always 401s): envelope http_401, exit 1.
+    expect(code).toBe(1);
     expect(cap.err()).toContain("auth login");
   });
 });

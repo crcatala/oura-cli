@@ -89,6 +89,11 @@ export type OutputOptions = {
   /** Renders human-readable output; receives the active format (plain/table). */
   formatter?: (data: unknown, format: "plain" | "table") => string;
   columns?: ColumnConfig[];
+  /**
+   * Key to emit in quiet mode (default "id"). Composites without a single
+   * document id (e.g. `today`'s date) use their own stable key instead.
+   */
+  quietKey?: string;
 };
 
 /**
@@ -97,11 +102,12 @@ export type OutputOptions = {
  */
 export function output(ctx: CliContext, data: unknown, options: OutputOptions = {}): void {
   if (ctx.output.quiet) {
+    const key = options.quietKey ?? "id";
     const items = data === null ? [] : Array.isArray(data) ? data : [data];
     for (const item of items) {
       if (typeof item === "object" && item !== null) {
-        const id = (item as Record<string, unknown>).id;
-        if (id !== undefined) writeOut(String(id));
+        const value = (item as Record<string, unknown>)[key];
+        if (value !== undefined) writeOut(String(value));
       }
     }
     return;

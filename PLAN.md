@@ -43,7 +43,7 @@ tests/ unit(4) + integration(1)   # 83 tests, all green
 
 ## Verified live
 
-- Sandbox (2026-08-05): `today` returns all 7 sections; `sleep/readiness/activity/stress/spo2/resilience/vo2max` single-day + `--days N`; usage errors → exit 2 JSON envelope; missing creds → exit 3 with `Run: oura auth login`; `auth status` reports source/scopes/expiry (masked).
+- Sandbox (2026-08-05): `today` returns all 7 sections; `sleep/readiness/activity/stress/spo2/resilience/vo2max` single-day + `--days N`; usage errors → exit 2 JSON envelope; missing creds → exit 1 with `AUTH_REQUIRED` envelope + `Run: oura auth login`; `auth status` reports source/scopes/expiry (masked).
 - Real token (2026-08): `heartrate`/`workouts` verified. **Not yet live-verified: the loopback login flow itself** (needs a real Oura app registration + redirect URI).
 
 ---
@@ -53,8 +53,8 @@ tests/ unit(4) + integration(1)   # 83 tests, all green
 ### Phase 4: Agent optimization & polish (small)
 - [x] `oura doctor` — credential source, token expiry, endpoint reachability (the only missing command; everything else in Phase 4 — `--quiet`, JSON error envelopes, stable keys, stdin-free — is already implemented)
 - [x] `today --table` format decision — `today` is currently JSON-only; `--table` falls back to JSON for the composite
-- [ ] `--quiet` on composite `today` — emits nothing today (no top-level `id`); decide a sensible quiet shape
-- [ ] Settle auth-required exit code: implementation uses **exit 3**; plan §1.4 revision says exit 1 + code `AUTH_REQUIRED` (cli-starter convention). Pick one, update code + docs, record in `cli-playbook.md` (collection-wide — see followups register item 4)
+- [x] `--quiet` on composite `today` — **prints the resolved date**: `today` has no single document id, and the date is the key other date-based commands chain on (`--date`, `--days`, heartrate `--start`). Implemented as a `quietKey` option on the output module.
+- [x] Settle auth-required exit code — **exit 1 + envelope code `AUTH_REQUIRED`** (cli-starter convention; no bespoke exit 3). `AuthRequiredError` renamed to `AuthError` to match the collection; 401s also exit 1 with `http_401` in the envelope. Recorded in `cli-playbook.md` (collection-wide — see followups register item 4).
 
 ### Phase 5: Distribution
 - [ ] CI — see `.github/workflows/ci.yml` (added at spin-off)
@@ -64,7 +64,7 @@ tests/ unit(4) + integration(1)   # 83 tests, all green
 
 ### Pre-release checklist
 - [ ] Live-verify the full OAuth2 loopback login flow against a real Oura app (login → status → refresh rotation → logout/revoke)
-- [x] Decide the `today --quiet` / `--table` shapes above — `--table`/`--plain` ship as a per-section briefing; `--quiet` on `today` remains open
+- [x] Decide the `today --quiet` / `--table` shapes above — `--table`/`--plain` ship as a per-section briefing; `--quiet` prints the date; `--sections` applies to the briefing and JSON, quiet always emits the date
 - [ ] Document the auth-required pattern in the collection's `cli-playbook.md` (monorepo)
 - [ ] Add live-test creds as repo secrets (needed once live tests run in CI)
 

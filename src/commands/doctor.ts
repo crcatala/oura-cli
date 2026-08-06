@@ -7,7 +7,7 @@ import { configFileStore } from "../config/credentials.js";
 import { REQUESTED_SCOPES } from "../oauth/scopes.js";
 import { output } from "../output/index.js";
 import { today } from "../utils/date.js";
-import { AuthRequiredError, CliError } from "../utils/errors.js";
+import { AuthError, CliError } from "../utils/errors.js";
 
 export type CheckStatus = "ok" | "warn" | "error" | "skipped";
 
@@ -207,7 +207,7 @@ async function runDoctor(
         ),
       );
     } catch (err) {
-      if (err instanceof AuthRequiredError) {
+      if (err instanceof AuthError) {
         checks.push(check("api reachability", "error", err.message, err.hint));
       } else {
         const msg = err instanceof Error ? err.message : String(err);

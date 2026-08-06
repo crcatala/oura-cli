@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { OuraClient } from "../../src/api/client.js";
 import type { OuraTokens } from "../../src/types.js";
-import { AuthRequiredError, OuraApiError } from "../../src/utils/errors.js";
+import { AuthError, OuraApiError } from "../../src/utils/errors.js";
 
 type FetchHandler = (url: string, init?: RequestInit) => Response | Promise<Response>;
 
@@ -206,10 +206,10 @@ describe("OuraClient misc", () => {
     expect(calls[0].url).toContain("/v2/sandbox/usercollection/daily_sleep");
   });
 
-  it("throws AuthRequiredError when no credentials and not sandbox", async () => {
+  it("throws AuthError when no credentials and not sandbox", async () => {
     const { fetcher } = makeFetcher(() => jsonResponse(200, { data: [], next_token: null }));
     const client = new OuraClient({ accessToken: "", fetcher });
-    await expect(client.dailySleep("2026-01-18")).rejects.toBeInstanceOf(AuthRequiredError);
+    await expect(client.dailySleep("2026-01-18")).rejects.toBeInstanceOf(AuthError);
   });
 
   it("surfaces non-OK responses as OuraApiError with status", async () => {

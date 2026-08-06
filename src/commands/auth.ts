@@ -5,7 +5,7 @@ import { DEFAULT_PORT, revokeTokens, runManualOAuthFlow, runOAuthFlow } from "..
 import { REQUESTED_SCOPES } from "../oauth/scopes.js";
 import { logInfo, logSuccess, output } from "../output/index.js";
 import type { StoredCredentials } from "../types.js";
-import { AuthRequiredError, CliError } from "../utils/errors.js";
+import { AuthError, CliError } from "../utils/errors.js";
 
 export interface AuthDeps {
   env: Record<string, string | undefined>;
@@ -144,5 +144,5 @@ export async function cmdAuthLogout(deps: AuthDeps): Promise<void> {
       "Credentials come from environment variables — unset OURA_ACCESS_TOKEN / OURA_REFRESH_TOKEN to log out",
     );
   }
-  throw new AuthRequiredError("Not logged in", "Run: oura auth login");
+  throw new AuthError("Not logged in", "Run: oura auth login");
 }
