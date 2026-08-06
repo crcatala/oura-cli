@@ -4,6 +4,7 @@ import type { CliContext } from "../cli/context.js";
 import type { AuthDeps } from "../commands/auth.js";
 import { cmdAuthLogin, cmdAuthLogout, cmdAuthStatus } from "../commands/auth.js";
 import { makeDailyCommand } from "../commands/daily.js";
+import { registerDoctor } from "../commands/doctor.js";
 import { registerHeartrate } from "../commands/heartrate.js";
 import { registerProfile } from "../commands/profile.js";
 import { registerToday } from "../commands/today.js";
@@ -70,6 +71,7 @@ export function buildProgram(deps: ProgramDeps): Command {
   // ---- composite + misc ----
   registerToday(program, ctx, client);
   registerProfile(program, ctx, client);
+  registerDoctor(program, ctx, client, auth);
 
   // ---- daily summaries ----
   makeDailyCommand(program, ctx, client, {
