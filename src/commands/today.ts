@@ -87,13 +87,10 @@ export function registerToday(program: Command, ctx: CliContext, client: OuraCli
 
       // --sections filters both human and JSON output (null keys kept for
       // the sync hint in human modes but dropped entirely in JSON).
-      const filtered = requested
-        ? filterBriefing(briefing, requested)
-        : briefing;
+      const filtered = requested ? filterBriefing(briefing, requested) : briefing;
 
       output(ctx, filtered, {
-        formatter: (data, format) =>
-          formatBriefing(data as TodayBriefing, format, requested),
+        formatter: (data, format) => formatBriefing(data as TodayBriefing, format, requested),
       });
     });
 }
@@ -115,7 +112,7 @@ function filterBriefing(b: TodayBriefing, requested: string[]): TodayBriefing {
   const out: TodayBriefing = { date: b.date } as TodayBriefing;
   for (const key of SECTIONS) {
     if (requested.includes(key)) {
-      (out as Record<string, unknown>)[key] = b[key];
+      (out as unknown as Record<string, unknown>)[key] = b[key];
     }
   }
   return out;
