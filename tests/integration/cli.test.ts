@@ -603,8 +603,50 @@ describe("CLI integration (mocked fetch)", () => {
         stderr: cap.stderr,
       },
     );
-    // Second attempt also 401s (fixture always 401s): envelope http_401, exit 1.
+    // Second attempt also 401s (fixture always 401s), but the refresh
+    // fails because no client credentials were provided — the error is
+    // AuthError, not OuraApiError (http_401).
     expect(code).toBe(1);
     expect(cap.err()).toContain("auth login");
+  });
+
+  it("API 401s after a successful refresh surface as OuraApiError (http_401 envelope)", async () => {
+    const cap = capture();
+    const code = await main(
+      ["--json", "sleep", "--date", "2026-01-18"],
+      {
+        OURA_ACCESS_TOKEN: "stale",
+        OURA_REFRESH_TOKEN: "rt",
+        OURA_CLIENT_ID: "cid",
+        OURA_CLIENT_SECRET: "cs",
+        OURA_CONFIG_DIR: join(mkdtempSync(join(tmpdir(), "oura-cli-int-")), "cfg"),
+      },
+      {
+        fetcher: (async (url: string, _init?: RequestInit) => {
+          if (url.includes("/oauth/v2/ext/oauth-token")) {
+            return new Response(
+              JSON.stringify({
+                access_token: "fresh",
+                refresh_token: "r2",
+                token_type: "bearer",
+                expires_in: 86400,
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            );
+          }
+          return new Response(JSON.stringify({ detail: "expired" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }) as unknown as typeof fetch,
+        stdout: cap.stdout,
+        stderr: cap.stderr,
+      },
+    );
+    expect(code).toBe(1);
+    const envelope = JSON.parse(cap.err());
+    expect(envelope.error.kind).toBe("api");
+    expect(envelope.error.code).toBe("http_401");
+    expect(envelope.error.hint).toContain("auth login");
   });
 });
