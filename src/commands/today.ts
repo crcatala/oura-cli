@@ -38,6 +38,9 @@ const SECTIONS = [
  * `oura today` — morning briefing: readiness, sleep, activity, stress,
  * SpO2, resilience + ring battery for one day. Missing documents (e.g.
  * sleep before app sync) become null instead of errors.
+ *
+ * TODO: extract sectionRows, the formatters, and filterBriefing into a
+ * separate formatters/today.ts module alongside the next today feature.
  */
 export function registerToday(program: Command, ctx: CliContext, client: OuraClient): void {
   program
@@ -82,8 +85,15 @@ export function registerToday(program: Command, ctx: CliContext, client: OuraCli
         battery: batteryRows[batteryRows.length - 1] ?? null,
       };
 
-      output(ctx, briefing, {
-        formatter: (data, format) => formatBriefing(data as TodayBriefing, format, requested),
+      // --sections filters both human and JSON output (null keys kept for
+      // the sync hint in human modes but dropped entirely in JSON).
+      const filtered = requested
+        ? filterBriefing(briefing, requested)
+        : briefing;
+
+      output(ctx, filtered, {
+        formatter: (data, format) =>
+          formatBriefing(data as TodayBriefing, format, requested),
       });
     });
 }
@@ -98,6 +108,17 @@ interface SectionRow {
   label: string;
   score: string;
   detail: string;
+}
+
+/** Drop keys not in `requested` from the briefing object (JSON output). */
+function filterBriefing(b: TodayBriefing, requested: string[]): TodayBriefing {
+  const out: TodayBriefing = { date: b.date } as TodayBriefing;
+  for (const key of SECTIONS) {
+    if (requested.includes(key)) {
+      (out as Record<string, unknown>)[key] = b[key];
+    }
+  }
+  return out;
 }
 
 /** Compact `Label 12` pair; null values are dropped from the detail line. */

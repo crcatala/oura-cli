@@ -52,7 +52,7 @@ function humanDuration(ms: number): string {
 /**
  * `oura doctor` — diagnostics for credential source, token expiry, granted
  * scopes, storage backend, and API reachability. Exits 0 when everything is
- * healthy (or checks were skipped), 1 when a problem is found.
+ * healthy (or only warnings are found), 1 when an error is found.
  */
 export function registerDoctor(
   program: Command,
@@ -167,9 +167,10 @@ async function runDoctor(
   // ---- storage ----
   const fileStore = configFileStore(deps.env.OURA_CONFIG_DIR);
   const fileExists = existsSync(fileStore.filePath);
-  if (fileExists && process.platform !== "win32") {
+  const activeBackend = deps.store.type;
+  if (fileExists && activeBackend === "config" && process.platform !== "win32") {
     const mode = statSync(fileStore.filePath).mode & 0o777;
-    const detail = `backend: ${deps.store.type} — ${fileStore.filePath} (${mode.toString(8)})`;
+    const detail = `backend: ${activeBackend} — ${fileStore.filePath} (${mode.toString(8)})`;
     checks.push(
       mode & 0o077
         ? check(
@@ -186,8 +187,8 @@ async function runDoctor(
         "storage",
         "ok",
         fileExists
-          ? `backend: ${deps.store.type} — ${fileStore.filePath}`
-          : `backend: ${deps.store.type} — no config file yet`,
+          ? `backend: ${activeBackend} — ${fileStore.filePath}`
+          : `backend: ${activeBackend} — no config file yet`,
       ),
     );
   }
