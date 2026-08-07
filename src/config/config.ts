@@ -30,7 +30,7 @@ export class JsonFileStore<T> {
 
   save(data: T): void {
     mkdirSync(this.dir(), { recursive: true, mode: 0o700 });
-    writeFileSync(this.filePath, JSON.stringify(data, null, 2) + "\n", { mode: this.mode });
+    writeFileSync(this.filePath, `${JSON.stringify(data, null, 2)}\n`, { mode: this.mode });
   }
 
   clear(): void {

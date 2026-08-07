@@ -167,6 +167,11 @@ function offsetDay(date: string, delta: number): string {
   return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`;
 }
 
+/** Fail the test when a value is nullish, narrowing it for the rest of the block. */
+function assertDefined<T>(value: T | null | undefined): asserts value is T {
+  expect(value).toBeDefined();
+}
+
 describe("CLI integration (mocked fetch)", () => {
   it("sleep --json returns the daily document", async () => {
     const cap = capture();
@@ -237,9 +242,10 @@ describe("CLI integration (mocked fetch)", () => {
     });
     expect(code).toBe(0);
     const sleepUrl = requestedUrls.find((u) => u.includes("/daily_sleep"));
-    expect(sleepUrl).toBeTruthy();
-    const params = new URL(sleepUrl!).searchParams;
-    const end = params.get("end_date")!;
+    assertDefined(sleepUrl);
+    const params = new URL(sleepUrl).searchParams;
+    const end = params.get("end_date");
+    assertDefined(end);
     expect(params.get("start_date")).toBe(offsetDay(end, -6));
     expect(params.get("end_date")).toBe(end);
   });

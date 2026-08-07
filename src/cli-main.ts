@@ -56,20 +56,21 @@ export async function main(
 
     // Persist rotated refresh tokens back to the store only when the source
     // is the store (env-provided tokens stay ephemeral).
+    const creds = resolved.creds;
     const persistTokens =
-      resolved.source !== "env" && resolved.creds
+      resolved.source !== "env" && creds
         ? async (tokens: OuraTokens): Promise<void> => {
             const existing = await store.load();
             // If the store was cleared between init and refresh, hold on to
             // the fields we already have instead of starting from scratch.
             const base = existing ?? {
-              accessToken: resolved.creds!.accessToken,
-              refreshToken: resolved.creds!.refreshToken,
+              accessToken: creds.accessToken,
+              refreshToken: creds.refreshToken,
               clientId: resolved.clientId,
               clientSecret: resolved.clientSecret,
-              grantedScopes: resolved.creds!.grantedScopes,
-              expiresAt: resolved.creds!.expiresAt,
-              updatedAt: resolved.creds!.updatedAt,
+              grantedScopes: creds.grantedScopes,
+              expiresAt: creds.expiresAt,
+              updatedAt: creds.updatedAt,
             };
             await store.save({
               ...base,
