@@ -1,6 +1,8 @@
 # oura-cli
 
+[![npm version](https://img.shields.io/npm/v/@crcatala/oura-cli.svg)](https://www.npmjs.com/package/@crcatala/oura-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/crcatala/oura-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/crcatala/oura-cli/actions/workflows/ci.yml)
 
 An **OAuth2-only** TypeScript CLI for the [Oura Ring API v2](https://cloud.ouraring.com/v2/docs), built for personal health monitoring, scripting, and AI-agent integration.
 
