@@ -119,8 +119,7 @@ function fixtureFetcher() {
         ],
         next_token: null,
       });
-    if (url.includes("/personal_info"))
-      return json(200, { data: [personalInfo], next_token: null });
+    if (url.includes("/personal_info")) return json(200, personalInfo);
     // Everything else (stress/spo2/resilience/battery/etc.) — empty collection.
     return json(200, { data: [], next_token: null });
   };

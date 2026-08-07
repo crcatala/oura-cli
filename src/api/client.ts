@@ -185,8 +185,8 @@ export class OuraClient {
   // ------------------------------------------------------------------------
 
   async personalInfo(): Promise<PersonalInfo | null> {
-    const rows = await this.range<PersonalInfo>(ENDPOINTS.personalInfo, {});
-    return rows[0] ?? null;
+    // personal_info returns a plain object, not a {data: […]} envelope
+    return this.requestSingle<PersonalInfo>(ENDPOINTS.personalInfo, {});
   }
 
   // ------------------------------------------------------------------------
@@ -220,6 +220,36 @@ export class OuraClient {
         ...(nextToken ? { next_token: nextToken } : {}),
       }),
     );
+  }
+
+  /**
+   * Fetch one endpoint that returns a plain JSON object (not an envelope).
+   * personal_info is the only known endpoint with this shape.
+   */
+  private async requestSingle<T>(
+    endpoint: string,
+    params: Record<string, string>,
+  ): Promise<T | null> {
+    if (!this.accessToken && !this.sandbox) {
+      throw new AuthError("No credentials configured", "Run: oura auth login");
+    }
+    const url = new URL(`${this.baseUrl}/${endpoint}`);
+    for (const [k, v] of Object.entries(params)) {
+      url.searchParams.set(k, v);
+    }
+
+    let res = await this.doFetch(url);
+    if (res.status === 401 && this.refreshToken) {
+      await this.serializedRefresh();
+      res = await this.doFetch(url);
+    }
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new OuraApiError(res.status, body);
+    }
+
+    return (await res.json()) as T;
   }
 
   private async request<T>(endpoint: string, params: Record<string, string>): Promise<T> {

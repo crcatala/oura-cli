@@ -30,9 +30,9 @@ export function buildProgram(deps: ProgramDeps): Command {
     .option("--json", "Machine-readable JSON output")
     .option("--plain", "Human-readable plain text")
     .option("--table", "Tabular output")
-    .option("--quiet", "IDs only (for scripting)")
+    .option("-q, --quiet", "IDs only (for scripting)")
     .option("--no-color", "Disable colors")
-    .option("--verbose", "Verbose progress on stderr")
+    .option("--verbose, --debug", "Verbose progress on stderr")
     .option("--sandbox", "Use Oura sandbox data (no credentials needed)")
     .option("--port <port>", "OAuth callback port", String(9876));
 

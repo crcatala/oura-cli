@@ -232,6 +232,22 @@ export function extractCodeAndState(pasted: string): { code: string | null; stat
 }
 
 /**
+ * Try to extract OAuth scope names from a pasted redirect URL.
+ * Returns an empty array when no scope param is present.
+ */
+function extractScopesFromPasted(pasted: string): string[] {
+  const trimmed = pasted.trim();
+  if (!trimmed.includes("scope=")) return [];
+  try {
+    const url = new URL(trimmed.startsWith("http") ? trimmed : `http://localhost/${trimmed}`);
+    const scopeParam = url.searchParams.get("scope");
+    return scopeParam ? scopeParam.split(" ").filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Headless/remote-friendly flow: print the authorize URL, read back the
  * redirect URL (or code) pasted from a browser on another machine, and
  * exchange it. The browser's localhost redirect never needs to reach this
@@ -277,7 +293,10 @@ export async function runManualOAuthFlow(opts: ManualOAuthOptions): Promise<OAut
     clientSecret,
     fetcher: opts.fetcher,
   });
-  return { tokens, grantedScopes: [] };
+  // Parse scopes from the pasted value when present (normal loopback flow
+  // already captures them; manual flow users can paste the scope-bearing URL).
+  const grantedScopes = extractScopesFromPasted(pasted);
+  return { tokens, grantedScopes };
 }
 
 /** Exchange an authorization code for tokens. */
