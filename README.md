@@ -1,125 +1,200 @@
 # oura-cli
 
-An **OAuth2-only** TypeScript CLI for the [Oura Ring API v2](https://cloud.ouraring.com/v2/docs), built for AI-agent integration and personal health monitoring. Published on npm as **`@crcatala/oura-cli`** (installs the `oura` and `oura-cli` commands; releases follow [RELEASING.md](RELEASING.md)). Standalone repo spun off from the `research-learning-agent` experiments (2026-08); current status: **M2/MVP complete** — plan and remaining roadmap live in [`docs/implementation-plan.md`](docs/implementation-plan.md) and [`PLAN.md`](PLAN.md).
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+An **OAuth2-only** TypeScript CLI for the [Oura Ring API v2](https://cloud.ouraring.com/v2/docs), built for personal health monitoring, scripting, and AI-agent integration.
 
 > **Unofficial software:** not affiliated with, endorsed by, or sponsored by Oura Health Oy. "Oura" is a trademark of Oura Health Oy. Personal access tokens were **deprecated December 2025** — this CLI uses OAuth2 only.
 
-## Quick start (sandbox — zero credentials)
+## Features
+
+- **Morning briefing** — one command for sleep, readiness, activity, stress, SpO2, resilience, and ring battery
+- **Daily summaries & trends** — `sleep`, `readiness`, `activity`, `stress`, `resilience`, `spo2`, `vo2max` with `--date`, `--days`, and `--start/--end` windows
+- **Time series** — hourly-aggregated heart rate and workout history
+- **Agent-friendly output** — JSON automatically when piped, stable keys for chaining, machine-safe stdout
+- **OAuth2 with automatic refresh** — tokens in the OS keyring (or a `0600` config file), refresh-token rotation handled for you
+- **Zero-credential sandbox** — try every command against Oura's sandbox before connecting a real account
+
+## Requirements
+
+- Node.js 22+
+- For real data: an Oura Ring (Gen3+ for heart rate) and a registered Oura developer app
+
+## Installation
 
 ```bash
-npm install
-npm run build
-
-# Oura's sandbox serves fake data without any account
-node dist/cli.js --sandbox --json today            # morning briefing (all sections)
-node dist/cli.js --sandbox --table sleep --days 5  # sleep trends
-node dist/cli.js --sandbox readiness --date 2026-01-18
+npm install -g @crcatala/oura-cli
 ```
 
-## Real auth (OAuth2, one-time setup)
+Or run it without installing:
 
-> **New IdP (2026):** Oura migrated its identity provider to Curity
-> (`moi.ouraring.com`). Scopes are `extapi:`-prefixed and the token endpoint
-> is `https://moi.ouraring.com/oauth/v2/ext/oauth-token` — the CLI is already
-> wired for this. The public docs at `cloud.ouraring.com/docs/authentication`
-> are stale (legacy scope names + token URL).
+```bash
+npx @crcatala/oura-cli --help
+```
 
-1. Register an app in the developer portal with a redirect URI for the
-   loopback callback (see note below)
-2. Set credentials (env vars, never shell-history flags):
+This installs the `oura` command, with `oura-cli` as an alias.
+
+## Quick start (sandbox — no account needed)
+
+Oura's sandbox serves fake data, so you can explore every command without credentials:
+
+```bash
+oura --sandbox today                      # morning briefing (all 7 sections)
+oura --sandbox --table today              # same, as a summary table
+oura --sandbox sleep --days 7             # last week of sleep scores
+oura --sandbox --table sleep --days 7     # sleep trend table
+oura --sandbox workouts --days 3          # recent workouts
+oura --sandbox --json today | jq '.sleep.score'
+```
+
+## Authentication (real account)
+
+1. **Register an app** in the [Oura developer portal](https://cloud.ouraring.com/oauth/applications) with redirect URI `http://localhost:9876/callback/`. The **trailing slash is required** — the portal rejects the no-slash variant (`invalid_redirect_uri`); the CLI accepts both `/callback` and `/callback/`.
+2. **Set your app credentials** (env vars — never shell history or files):
 
    ```bash
-   export OURA_CLIENT_ID=...
-   export OURA_CLIENT_SECRET=...
-   node dist/cli.js auth login     # opens browser → callback → tokens stored
-   node dist/cli.js auth status    # source, scopes, expiry (masked)
-   node dist/cli.js auth logout    # revoke + clear
+   export OURA_CLIENT_ID=your-client-id
+   export OURA_CLIENT_SECRET=your-client-secret
    ```
 
-Tokens are stored in the OS keyring (keytar), falling back to a `0600` config file at `~/.config/oura-cli/credentials.json` when the keyring is unavailable (e.g., headless Linux) or with `--use-config`. Env overrides: `OURA_ACCESS_TOKEN` / `OURA_REFRESH_TOKEN` (+ `OURA_CLIENT_ID` / `OURA_CLIENT_SECRET`). Access-token refresh is automatic; the single-use rotating refresh token is persisted before it's consumed.
+3. **Log in:**
 
-### Redirect URI (current developer portal)
+   ```bash
+   oura auth login        # opens a browser → callback → tokens stored
+   oura auth status       # credential source, scopes, expiry (masked)
+   oura auth logout       # revoke + clear stored credentials
+   ```
 
-The CLI listens on `http://localhost:9876/callback/` by default (`--port` to change). **Register the URI with the trailing slash** — the current developer-portal form rejects the no-slash variant (`http://localhost:9876/callback`) with `invalid_redirect_uri`; `http://localhost:9876/callback/` is accepted. The CLI accepts callbacks on both `/callback` and `/callback/`.
+> **Note (2026):** Oura migrated to a new identity provider (`moi.ouraring.com`); the public docs at `cloud.ouraring.com/docs/authentication` are stale (legacy scope names + token URL). The CLI targets the current IdP, requests only valid scope names (`daily`, `heartrate`, `workout`, `session`, `spo2Daily`, `personal`, `email`, plus `stress`, `ringConfiguration`, `heartHealth`, `tag`), and records which scopes Oura actually granted.
+
+### Token storage
+
+Tokens live in the OS keyring (Keychain / Credential Manager / Secret Service) by default, falling back to a `0600` config file at `~/.config/oura-cli/credentials.json` when the keyring is unavailable (e.g., headless Linux) or with `--use-config`. Env overrides `OURA_ACCESS_TOKEN` / `OURA_REFRESH_TOKEN` bypass stored credentials entirely. Access-token refresh is automatic — Oura's single-use refresh token is rotated and persisted before it is consumed.
 
 ### Headless / SSH machines
 
-On a headless box (no browser, e.g. a VPS), `auth login` prints the authorize URL instead of opening a browser. To complete the flow from your laptop:
+`oura auth login --manual` needs no tunnel:
 
 ```bash
-# 1. From your laptop, tunnel the callback port to the remote machine:
-ssh -L 9876:localhost:9876 user@remote-host
-
-# 2. On the remote machine:
-OURA_CLIENT_ID=... OURA_CLIENT_SECRET=... node dist/cli.js auth login
-#    → prints the authorize URL; open it in your LOCAL browser
-#    → consent → browser redirects to localhost:9876/callback/ → tunnel → CLI completes
-```
-
-Or use `--no-browser` explicitly to skip any browser attempt. The callback must reach the machine running the CLI — the URL is always printed so you can drive it manually.
-
-**Easiest for headless/remote: `auth login --manual`** (no tunnel needed):
-
-```bash
-OURA_CLIENT_ID=... OURA_CLIENT_SECRET=... node dist/cli.js auth login --manual
-# 1. Prints the authorize URL → open it in ANY browser (your laptop)
+# 1. On the remote machine:
+oura auth login --manual
+#    → prints the authorize URL → open it in ANY browser (your laptop)
 # 2. Approve → the browser tries localhost:9876 and fails (expected)
 # 3. Copy the full URL from the address bar, paste it back into the CLI
 ```
 
-The CLI extracts the `code` and exchanges it directly — the browser's localhost never needs to reach the remote machine, and there's no state mismatch because you paste into the same run that printed the URL. (A pasted URL from an *older* run is detected and rejected with a clear hint.)
+Alternatively, tunnel the callback port (`ssh -L 9876:localhost:9876 host`) and run a normal `auth login`. On a headless box the CLI prints the authorize URL instead of opening a browser; `--no-browser` forces that behavior.
 
-The CLI listens on `http://localhost:9876/callback/` by default (`--port` to change).
-**Register the URI with the trailing slash** — the current developer-portal form rejects
-the no-slash variant (`http://localhost:9876/callback`) with `invalid_redirect_uri`;
-`http://localhost:9876/callback/` is accepted. The CLI accepts callbacks on both
-`/callback` and `/callback/`.
 ## Commands
 
-| Command | Description |
+### Morning briefing
+
+```bash
+oura today                          # all 7 sections
+oura today --table                  # per-section summary table
+oura today --sections sleep,stress  # subset of sections
+oura today --date yesterday         # a specific day
+oura today --quiet                  # print just the resolved date (for scripting)
+```
+
+### Daily summaries & trends
+
+`sleep`, `readiness`, `activity`, `stress`, `resilience`, `spo2`, and `vo2max` share one pattern:
+
+```bash
+oura sleep                                  # today's sleep score + contributors
+oura sleep --date 2026-01-18                # a specific day
+oura readiness --days 7                     # last 7 days (ending today)
+oura stress --start 2026-01-01 --end 2026-01-07   # an explicit range
+oura activity --table --days 30             # a month of activity as a table
+```
+
+### Time series
+
+```bash
+oura heartrate --start 2026-01-18T06:00 --end 2026-01-18T09:00
+oura heartrate --start 2026-01-18 --end 2026-01-20 --bucket max   # avg|min|max|count
+oura workouts --days 7                      # recent workout sessions
+oura workouts --date 2026-01-18             # one day
+```
+
+Heart rate samples are aggregated into hourly buckets (JSON carries avg/min/max/count per hour). Heart rate requires a **Gen3+ ring** and app sync; an empty range prints a hint on stderr.
+
+### Account
+
+```bash
+oura profile     # age, biological sex, weight, height, email
+oura doctor      # diagnostics: credential source, token expiry, scopes, storage, API reachability (exits 1 on problems)
+oura auth ...    # login | status | logout
+```
+
+## Output & scripting
+
+| Flag | Behavior |
+|------|----------|
+| *(default)* | JSON when piped (non-TTY), plain text in a terminal |
+| `--json` | Force structured JSON |
+| `--table` | Aligned table |
+| `--plain` | Human-readable text |
+| `--quiet` | Minimal output (dates / IDs) for chaining |
+| `--no-color` | Disable ANSI colors (also honored via `NO_COLOR`) |
+| `--verbose` | Progress details on stderr |
+| `--sandbox` | Use Oura sandbox data (no credentials) |
+| `--port <n>` | OAuth callback port (default 9876) |
+
+- Data goes to stdout; progress, warnings, and errors go to stderr — piping stays machine-safe.
+- `--date`, `--days N`, and `--start/--end` are **mutually exclusive** — combining any two is a usage error (exit 2), never silent precedence. `--days N` means the last N days ending today.
+- Exit codes: `0` ok, `1` general, `2` usage, `130` interrupted. Auth failures exit `1`; machine consumers detect them via the JSON error envelope (`error.kind: "auth"`, `error.code: "AUTH_REQUIRED"`).
+
+### Examples
+
+```bash
+# Morning check: what should I focus on today?
+oura today --table
+
+# Sleep trend for the last month
+oura sleep --days 30 --table
+
+# Did my morning run spike my heart rate?
+oura heartrate --start 2026-01-18T06:00 --end 2026-01-18T09:00 --bucket max
+
+# Agent/script: pull the sleep score into a variable
+SCORE=$(oura today --json | jq -r '.sleep.score')
+
+# Cron-friendly: check readiness, emit only the date
+oura today --quiet
+```
+
+### Environment variables
+
+| Variable | Purpose |
 |---|---|
-| `today [--date] [--sections csv]` | Composite morning briefing: sleep, readiness, activity, stress, SpO2, resilience, ring battery; `--table`/`--plain` render a per-section summary |
-| `sleep \| readiness \| activity \| stress \| resilience \| spo2 \| vo2max` | Daily summaries; `--date`, `--days N`, `--start/--end` |
-| `heartrate --start <iso> --end <iso> [--bucket avg\|min\|max\|count]` | Heart rate samples aggregated per hour (Gen3+); JSON carries avg/min/max/count per hour |
-| `workouts [--date \| --days N \| --start/--end]` | Workout sessions: activity, calories, distance, intensity, source |
-| `profile` | Personal info (age, sex, weight, height, email) |
-| `doctor` | Diagnostics: credential source, token expiry, scopes, storage permissions, API reachability; exits 1 when a problem is found |
-| `auth login \| status \| logout` | OAuth2 lifecycle |
+| `OURA_CLIENT_ID` / `OURA_CLIENT_SECRET` | OAuth app credentials |
+| `OURA_ACCESS_TOKEN` / `OURA_REFRESH_TOKEN` | Bypass stored credentials (e.g., CI) |
+| `OURA_USE_CONFIG` | Force config-file storage instead of keyring |
+| `OURA_CONFIG_DIR` | Override `~/.config/oura-cli` |
 
-Global flags: `--json` `--plain` `--table` `--quiet` `--no-color` `--verbose` `--sandbox` `--port <n>`.
+## Notes & quirks
 
-Window flags are mutually exclusive: `--date`, `--days N`, and `--start/--end` each define the window on their own; combining any two is a usage error (no silent precedence). `--days N` is the last N days ending today.
-
-Output is JSON automatically when piped (non-TTY); exit codes: `0` ok, `1` general, `2` usage, `130` interrupted. "Auth required" also exits `1`; machine consumers distinguish it via the JSON error envelope (`error.kind: "auth"`, `error.code: "AUTH_REQUIRED"`). Errors are JSON envelopes in `--json` mode.
-
-## Design highlights (from the research)
-
-- **`requestDay`** — Oura's `end_date` is exclusive/inconsistent per endpoint; single-day queries use `[date, date+1)` + a client-side `day` filter (verified quirk that breaks other CLIs).
-- **Exact scopes** — requests only valid scope names (`daily heartrate workout session spo2Daily personal email`); the daveremy/oura-mcp review showed a real-world bug from invalid scope strings.
-- **Refresh rotation** — single-flight refresh; the new (rotated) refresh token is persisted before the retry uses the new access token.
-- **Preflight authorize** — fails fast on an unregistered redirect URI before opening the browser; URL is always printed to stderr for headless use.
-- **Sandbox routing** — `--sandbox` hits `/v2/sandbox/usercollection/...` (no token needed), which also doubles as the test-fixture source.
+- **Exclusive end dates** — Oura's `end_date` is exclusive (and inconsistent per endpoint). Single-day queries use `[date, date+1)` with a client-side `day` filter.
+- **Data availability** — sleep/readiness appear only after the ring syncs with the Oura app; `today` degrades gracefully for missing sections.
+- **Refresh rotation** — Oura refresh tokens are single-use. The CLI rotates and persists the new token before the next request.
 
 ## Development
 
 ```bash
-npm test           # unit + integration tests (mocked fetch)
-npm run lint       # biome
+npm ci
+npm run dev -- today --sandbox     # run via tsx (no build)
+npm run build                      # compile TypeScript to dist/
+npm test                           # unit + integration tests (mocked fetch)
+npm run lint                       # biome
 npm run typecheck
-npm run verify     # build + test + lint + typecheck + package smoke test
+npm run verify                     # build + test + lint + typecheck + package smoke test
 ```
 
-The CLI is ESM/TypeScript built with `tsc`; `npm run build` (also `prepack`) produces `dist/`.
+### Live tests (maintainers only)
 
-### Live tests (read-only, maintainer-only)
-
-`tests/live/` runs against the **real** Oura API using env-provided OAuth tokens. It is
-**opt-in and read-only** — only GET commands (`today`, `sleep`, `heartrate`, `workouts`,
-`profile`, `doctor`, …) run; nothing logs in, revokes, or writes data. Requests are
-serialized and paced at 250 ms by default (`OURA_LIVE_DELAY_MS` to tune). Use a token set
-for a ring you don't mind being read.
-
-#### Running locally
+`tests/live/` runs against the **real** Oura API with a dedicated token set. It is **opt-in and read-only** — GET commands only; nothing logs in, revokes, or writes. Requests are serialized and paced at 250 ms by default (`OURA_LIVE_DELAY_MS` to tune).
 
 ```bash
 OURA_LIVE_TESTS=1 \
@@ -130,59 +205,16 @@ OURA_CLIENT_SECRET=... \
 npm run test:live
 ```
 
-`scripts/require-live-test-env.mjs` gates the run: without `OURA_LIVE_TESTS=1` **and** all four
-variables it exits 1. The suite also self-skips in plain `npm test` runs (`describe.skipIf`),
-so it is safe for anyone to have on disk.
-
-#### How they work in CI
-
-The **Live Tests** workflow (`.github/workflows/live-tests.yml`) runs the same suite against a
-PR's head commit. It has two entry points:
-
-- **`/run-live-tests` comment on a PR** (preferred) — only the repository owner can trigger
-  it, fork PRs are rejected, and both `github.actor` and `github.triggering_actor` must be
-  the owner, so a collaborator cannot re-run an owner-approved job.
-- **Manual `workflow_dispatch`** from the Actions tab, typing `RUN` in the `confirm` input
-  (optionally pinning `pr_number`/`pr_sha` for a status update).
-
-How the three jobs split the work:
-
-| Job | Permissions | What it does |
-|---|---|---|
-| `prepare` | `pull-requests: read` | Authorizes the run (owner + same-repo check), resolves the PR head SHA |
-| `test` | `contents: read` (no write token) | Checks out that SHA, runs `npm run test:live` with the secrets injected from the protected `live-tests` environment |
-| `report` | `checks: write`, `pull-requests: write` | Posts a **Live Tests** check + PR comment with the tested SHA and a link to the logs |
-
-The `test` job deliberately has **no write token** — it executes PR-controlled code, so it
-cannot touch the repo or other secrets. Results appear as a GitHub check named "Live Tests"
-and a PR comment, regardless of pass/fail.
-
-#### One-time setup
-
-1. **Register an Oura app** in the developer portal with redirect URI
-   `http://localhost:9876/callback/` (trailing slash required — see
-   [Real auth](#real-auth-oauth2-one-time-setup)).
-2. **Mint a token set** for the ring you'll read from: run `oura auth login` with that app's
-   client id/secret, then export the resulting access + refresh tokens.
-3. **Create the `live-tests` environment** in repo **Settings → Environments → New
-   environment**, and add the four secrets it reads:
-   `OURA_LIVE_ACCESS_TOKEN`, `OURA_LIVE_REFRESH_TOKEN`, `OURA_LIVE_CLIENT_ID`,
-   `OURA_LIVE_CLIENT_SECRET`.
-4. **Keep the tokens fresh.** Oura refresh tokens are single-use (rotated on refresh). Live
-   runs only consume the refresh token if the access token 401s mid-run, but when that
-   happens the stored secret goes stale — re-mint the pair before a CI run if the last
-   one was more than a day or two ago.
-
-Then just comment `/run-live-tests` on any same-repo PR.
+The **Live Tests** GitHub workflow runs this suite against a same-repo PR when the owner comments `/run-live-tests` (fork PRs are rejected), or manually from the Actions tab. It requires a protected `live-tests` environment with `OURA_LIVE_ACCESS_TOKEN`, `OURA_LIVE_REFRESH_TOKEN`, `OURA_LIVE_CLIENT_ID`, and `OURA_LIVE_CLIENT_SECRET`. Refresh tokens are single-use — re-mint the pair if the stored one has gone stale.
 
 ### Releases (maintainers only)
 
-See [RELEASING.md](RELEASING.md) for prerequisites, initial and subsequent release
-procedures (`release-it` + Keep a Changelog), recovery options, and post-publish verification.
+See [RELEASING.md](RELEASING.md) for the release-it + Keep a Changelog workflow, recovery options, and post-publish verification.
 
-## Out of scope (v1)
+## Out of scope
 
-Webhooks, tags, offline cache/digest, sessions/sleep-time/cardiovascular age, multi-user
-OAuth (see [`docs/implementation-plan.md`](docs/implementation-plan.md) Non-Goals).
-Remaining before the first npm publish: live-verify the loopback login flow and add the
-repo secrets (see [`PLAN.md`](PLAN.md)).
+Webhooks, tags, offline cache/digest, sessions/sleep-time/cardiovascular age, and multi-user OAuth.
+
+## Contributing & security
+
+This is a personally maintained project — see [CONTRIBUTING.md](CONTRIBUTING.md) before opening issues, and report security vulnerabilities privately per [SECURITY.md](SECURITY.md). Licensed under the [MIT License](LICENSE).
