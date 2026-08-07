@@ -13,3 +13,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   summaries (`today`, `sleep`, `readiness`, `activity`, `stress`, `resilience`,
   `spo2`, `vo2max`), time series (`heartrate`, `workouts`), `profile`, `doctor`,
   sandbox mode, and JSON/table/plain/quiet output for agent consumption.
+- `--quiet`/`-q` and `--verbose`/`--debug` aliases on commands.
+- `auth login --manual` captures the `scope` parameter from a pasted URL when
+  present.
+- `doctor --sandbox` skips the storage check ("not applicable in sandbox").
+- `today --sections` validates section names (case-insensitive) and rejects
+  unknown names with a usage error.
+
+### Changed
+
+- Daily summary commands now render `--plain` output as human-readable text —
+  `Key: value` pairs for single days, compact lines per row for ranges — instead
+  of falling back to JSON.
+- `today --quiet` now prints the resolved date (previously nothing), giving
+  scripts a stable key to chain other date-based commands.
+- `today --sections` now filters JSON output as well as human-readable formats.
+- Auth-required errors exit with status 1 and envelope code `AUTH_REQUIRED`
+  (previously a bespoke exit 3); API 401s keep code `http_401`.
+- Workout output rounds calories to whole numbers and reports distance in
+  kilometers.
+- `doctor` treats empty `grantedScopes` as "unknown" rather than warning about
+  0 of 11 scopes, and checks config-file permissions only when the config
+  backend is the active credential source.
+- `--verbose` now prints the credential source in use.
+
+### Fixed
+
+- `profile` no longer crashes: `personal_info` returns a plain object, not a
+  `{data:[...]}` envelope.
+- `heartrate --quiet` now emits hour keys instead of nothing.
+- Unknown options on subcommands now exit with status 2 and a JSON error
+  envelope instead of falling through to a bare `process.exit(1)`.
