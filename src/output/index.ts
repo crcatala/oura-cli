@@ -38,6 +38,11 @@ export function logInfo(ctx: CliContext, message: string): void {
   writeErr(`${prefix}${message}`);
 }
 
+export function logVerbose(ctx: CliContext, message: string): void {
+  if (!ctx.output.verbose) return;
+  writeErr(`[VERBOSE] ${message}`);
+}
+
 export type ColumnConfig = {
   /** Dot-notation key path (e.g. "contributors.deep_sleep") */
   key: string;

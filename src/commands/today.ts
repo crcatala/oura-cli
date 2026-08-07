@@ -12,6 +12,7 @@ import type {
   RingBatteryRow,
 } from "../types.js";
 import { resolveDate } from "../utils/date.js";
+import { UsageError } from "../utils/errors.js";
 
 export interface TodayBriefing {
   date: string;
@@ -56,9 +57,21 @@ export function registerToday(program: Command, ctx: CliContext, client: OuraCli
       const requested = opts.sections
         ? opts.sections
             .split(",")
-            .map((s) => s.trim())
+            .map((s) => s.trim().toLowerCase())
             .filter(Boolean)
         : null;
+
+      // Validate section names early (case-insensitive).
+      if (requested) {
+        const valid: readonly string[] = SECTIONS;
+        for (const name of requested) {
+          if (!valid.includes(name)) {
+            throw new UsageError(
+              `Unknown section "${name}" — valid sections: ${SECTIONS.join(", ")}`,
+            );
+          }
+        }
+      }
 
       const want = (key: string) => requested === null || requested.includes(key);
 

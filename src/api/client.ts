@@ -185,8 +185,8 @@ export class OuraClient {
   // ------------------------------------------------------------------------
 
   async personalInfo(): Promise<PersonalInfo | null> {
-    const rows = await this.range<PersonalInfo>(ENDPOINTS.personalInfo, {});
-    return rows[0] ?? null;
+    // personal_info returns a plain object, not a {data: […]} envelope
+    return this.requestSingle<PersonalInfo>(ENDPOINTS.personalInfo, {});
   }
 
   // ------------------------------------------------------------------------
@@ -220,6 +220,17 @@ export class OuraClient {
         ...(nextToken ? { next_token: nextToken } : {}),
       }),
     );
+  }
+
+  /**
+   * Fetch one endpoint that returns a plain JSON object (not an envelope).
+   * personal_info is the only known endpoint with this shape.
+   */
+  private async requestSingle<T>(
+    endpoint: string,
+    params: Record<string, string>,
+  ): Promise<T | null> {
+    return this.request<T>(endpoint, params);
   }
 
   private async request<T>(endpoint: string, params: Record<string, string>): Promise<T> {

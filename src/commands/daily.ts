@@ -24,6 +24,45 @@ export interface DailyCommandSpec<T extends HasDay> {
   pick?: (rows: T[]) => T | null;
 }
 
+// ── shared plain-text formatter for daily commands ────────────────────────
+
+function getNestedValue(obj: unknown, path: string): unknown {
+  if (obj === null || obj === undefined) return undefined;
+  let current: unknown = obj;
+  for (const key of path.split(".")) {
+    if (current === null || current === undefined) return undefined;
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+}
+
+function fmtPlain(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+/**
+ * Plain-text formatter for daily-summary rows built from the same column
+ * definitions used for `--table`.  Single-day mode prints `Header: value`
+ * pairs; ranges print one compact line per row.
+ */
+export function formatDailyPlain<T extends HasDay>(data: T | T[], columns: ColumnConfig[]): string {
+  const items = Array.isArray(data) ? data : data ? [data] : [];
+  if (items.length === 0) return "(no data)";
+
+  if (items.length === 1 && !Array.isArray(data)) {
+    return columns
+      .map((col) => `${col.header}: ${fmtPlain(getNestedValue(items[0], col.key))}`)
+      .join("\n");
+  }
+
+  return items
+    .map((item) => columns.map((col) => fmtPlain(getNestedValue(item, col.key))).join("  "))
+    .join("\n");
+}
+
 /**
  * Build a commander subcommand for a daily-summary endpoint with
  * --date / --days / --start / --end windowing.
@@ -61,9 +100,15 @@ export function makeDailyCommand(
     const data = singleDay && spec.pick ? spec.pick(rows) : rows;
     const fmt = spec.format;
 
+    // Wire the default plain formatter when columns are defined but no
+    // custom format is provided (covers all 7 daily-summary commands).
+    const cols = spec.columns;
+    const defaultFmt =
+      !fmt && cols ? (d: unknown) => formatDailyPlain(d as HasDay | HasDay[], cols) : undefined;
+
     output(ctx, data, {
       columns: spec.columns,
-      formatter: fmt ? (d) => fmt(Array.isArray(d) ? (d as HasDay[]) : d ? [d] : []) : undefined,
+      formatter: fmt ? (d) => fmt(Array.isArray(d) ? (d as HasDay[]) : d ? [d] : []) : defaultFmt,
     });
   });
 }

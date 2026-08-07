@@ -9,7 +9,7 @@ import { output } from "../output/index.js";
 import { today } from "../utils/date.js";
 import { AuthError, CliError } from "../utils/errors.js";
 
-export type CheckStatus = "ok" | "warn" | "error" | "skipped";
+export type CheckStatus = "ok" | "warn" | "error" | "skipped" | "unknown";
 
 export interface DoctorCheck {
   name: string;
@@ -21,7 +21,14 @@ export interface DoctorCheck {
 export interface DoctorReport {
   generatedAt: string;
   sandbox: boolean;
-  summary: { checks: number; ok: number; warnings: number; errors: number; skipped: number };
+  summary: {
+    checks: number;
+    ok: number;
+    warnings: number;
+    errors: number;
+    skipped: number;
+    unknown: number;
+  };
   checks: DoctorCheck[];
 }
 
@@ -143,8 +150,14 @@ async function runDoctor(
     checks.push(
       check("scopes", "skipped", sandbox ? "no scopes in sandbox mode" : "no credentials"),
     );
-  } else if (!creds.grantedScopes) {
-    checks.push(check("scopes", "warn", "no granted scopes recorded"));
+  } else if (!creds.grantedScopes || creds.grantedScopes.length === 0) {
+    checks.push(
+      check(
+        "scopes",
+        "unknown",
+        "no granted scopes recorded — scopes are captured from the OAuth callback and may be empty for manual/headless logins",
+      ),
+    );
   } else {
     const granted = creds.grantedScopes;
     const missing = REQUESTED_SCOPES.filter((s) => !granted.includes(s));
@@ -165,32 +178,36 @@ async function runDoctor(
   }
 
   // ---- storage ----
-  const fileStore = configFileStore(deps.env.OURA_CONFIG_DIR);
-  const fileExists = existsSync(fileStore.filePath);
-  const activeBackend = deps.store.type;
-  if (fileExists && activeBackend === "config" && process.platform !== "win32") {
-    const mode = statSync(fileStore.filePath).mode & 0o777;
-    const detail = `backend: ${activeBackend} — ${fileStore.filePath} (${mode.toString(8)})`;
-    checks.push(
-      mode & 0o077
-        ? check(
-            "storage",
-            "warn",
-            `${detail} — permissions too open (should be 600)`,
-            `chmod 600 ${fileStore.filePath}`,
-          )
-        : check("storage", "ok", detail),
-    );
+  if (sandbox) {
+    checks.push(check("storage", "skipped", "not applicable in sandbox mode"));
   } else {
-    checks.push(
-      check(
-        "storage",
-        "ok",
-        fileExists
-          ? `backend: ${activeBackend} — ${fileStore.filePath}`
-          : `backend: ${activeBackend} — no config file yet`,
-      ),
-    );
+    const fileStore = configFileStore(deps.env.OURA_CONFIG_DIR);
+    const fileExists = existsSync(fileStore.filePath);
+    const activeBackend = deps.store.type;
+    if (fileExists && activeBackend === "config" && process.platform !== "win32") {
+      const mode = statSync(fileStore.filePath).mode & 0o777;
+      const detail = `backend: ${activeBackend} — ${fileStore.filePath} (${mode.toString(8)})`;
+      checks.push(
+        mode & 0o077
+          ? check(
+              "storage",
+              "warn",
+              `${detail} — permissions too open (should be 600)`,
+              `chmod 600 ${fileStore.filePath}`,
+            )
+          : check("storage", "ok", detail),
+      );
+    } else {
+      checks.push(
+        check(
+          "storage",
+          "ok",
+          fileExists
+            ? `backend: ${activeBackend} — ${fileStore.filePath}`
+            : `backend: ${activeBackend} — no config file yet`,
+        ),
+      );
+    }
   }
 
   // ---- api reachability ----
@@ -226,6 +243,7 @@ async function runDoctor(
     warnings: checks.filter((c) => c.status === "warn").length,
     errors: checks.filter((c) => c.status === "error").length,
     skipped: checks.filter((c) => c.status === "skipped").length,
+    unknown: checks.filter((c) => c.status === "unknown").length,
   };
 
   return {
@@ -241,6 +259,7 @@ const STATUS_GLYPH: Record<CheckStatus, string> = {
   warn: "⚠",
   error: "✗",
   skipped: "–",
+  unknown: "?",
 };
 
 function formatDoctor(report: DoctorReport, _format: "plain" | "table"): string {
@@ -251,7 +270,10 @@ function formatDoctor(report: DoctorReport, _format: "plain" | "table"): string 
     lines.push(`  ${glyph} ${c.name.padEnd(width)}  ${c.detail}`);
     if (c.hint) lines.push(`    → ${c.hint}`);
   }
-  const { errors, warnings, ok, skipped } = report.summary;
-  lines.push("", `${errors} error(s), ${warnings} warning(s), ${ok} ok, ${skipped} skipped`);
+  const { errors, warnings, ok, skipped, unknown } = report.summary;
+  lines.push(
+    "",
+    `${errors} error(s), ${warnings} warning(s), ${ok} ok, ${skipped} skipped, ${unknown} unknown`,
+  );
   return lines.join("\n");
 }

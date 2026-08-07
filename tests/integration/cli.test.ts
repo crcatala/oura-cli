@@ -119,8 +119,7 @@ function fixtureFetcher() {
         ],
         next_token: null,
       });
-    if (url.includes("/personal_info"))
-      return json(200, { data: [personalInfo], next_token: null });
+    if (url.includes("/personal_info")) return json(200, personalInfo);
     // Everything else (stress/spo2/resilience/battery/etc.) — empty collection.
     return json(200, { data: [], next_token: null });
   };
@@ -180,6 +179,20 @@ describe("CLI integration (mocked fetch)", () => {
     const parsed = JSON.parse(cap.out());
     expect(parsed.day).toBe("2026-01-18");
     expect(parsed.score).toBe(80);
+  });
+
+  it("sleep --plain produces labeled Key: value pairs", async () => {
+    const cap = capture();
+    const code = await main(["--plain", "sleep", "--date", "2026-01-18"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Day: 2026-01-18");
+    expect(cap.out()).toContain("Score: 80");
+    expect(cap.out()).toContain("Deep: 70");
+    expect(cap.out()).toContain("REM: 60");
   });
 
   it("today aggregates sleep/readiness/activity", async () => {
@@ -313,6 +326,22 @@ describe("CLI integration (mocked fetch)", () => {
       stderr: cap.stderr,
     });
     expect(code).toBe(2);
+  });
+
+  it("heartrate --quiet prints hour keys", async () => {
+    const cap = capture();
+    const code = await main(
+      ["--quiet", "heartrate", "--start", "2026-01-18T00:00", "--end", "2026-01-19T00:00"],
+      env(),
+      {
+        fetcher: fixtureFetcher() as unknown as typeof fetch,
+        stdout: cap.stdout,
+        stderr: cap.stderr,
+      },
+    );
+    expect(code).toBe(0);
+    const lines = cap.out().trim().split("\n");
+    expect(lines).toEqual(["2026-01-18T00:00", "2026-01-18T01:00"]);
   });
 
   it("heartrate rejects malformed datetimes and buckets (usage error)", async () => {
@@ -542,6 +571,20 @@ describe("CLI integration (mocked fetch)", () => {
     expect(report.summary.errors).toBe(0);
     const creds = report.checks.find((c: { name: string }) => c.name === "credentials");
     expect(creds.status).toBe("ok");
+  });
+
+  it("unknown option exits 2 with JSON error envelope", async () => {
+    const cap = capture();
+    const code = await main(["--json", "sleep", "--bogus"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(2);
+    const envelope = JSON.parse(cap.err());
+    expect(envelope.error.kind).toBe("usage");
+    expect(envelope.error.code).toBe("UsageError");
+    expect(envelope.error.message).toContain("unknown option");
   });
 
   it("usage errors exit 2", async () => {

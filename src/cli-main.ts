@@ -2,8 +2,9 @@ import { OuraClient } from "./api/client.js";
 import { createContext } from "./cli/context.js";
 import { buildProgram } from "./cli/program.js";
 import { createStore, resolveCredentials } from "./config/credentials.js";
-import { outputError, setOutputStream } from "./output/index.js";
+import { logVerbose, outputError, setOutputStream } from "./output/index.js";
 import type { OuraTokens } from "./types.js";
+import { UsageError } from "./utils/errors.js";
 
 export interface MainOptions {
   /** Override for tests. */
@@ -44,6 +45,14 @@ export async function main(
       sandbox || informational
         ? { creds: null, clientId: undefined, clientSecret: undefined, source: null }
         : await resolveCredentials(env, store);
+
+    if (ctx.output.verbose) {
+      if (sandbox) {
+        logVerbose(ctx, "Sandbox mode — no credentials");
+      } else {
+        logVerbose(ctx, `Credentials: source=${resolved.source ?? "none"}`);
+      }
+    }
 
     // Persist rotated refresh tokens back to the store only when the source
     // is the store (env-provided tokens stay ephemeral).
@@ -92,6 +101,17 @@ export async function main(
     await program.parseAsync(argv, { from: "user" });
     return 0;
   } catch (err) {
+    // Convert Commander usage errors (unknown options, etc.) to our
+    // clig.dev-compliant exit-code-2 + JSON-envelope contract.
+    // Help/version (exitOverride with exitCode 0) pass through directly.
+    if (isCommanderError(err)) {
+      const exit = (err as { exitCode?: number }).exitCode ?? 1;
+      if (exit === 0) return 0; // --help, --version
+      const msg =
+        err.code === "commander.unknownOption" ? err.message : `Invalid usage: ${err.message}`;
+      outputError(ctx, new UsageError(msg));
+      return 2;
+    }
     outputError(ctx, err);
     const exitCode =
       err && typeof err === "object" && "exitCode" in err
@@ -99,4 +119,10 @@ export async function main(
         : 1;
     return exitCode;
   }
+}
+
+function isCommanderError(err: unknown): err is Error & { code: string } {
+  if (!(err instanceof Error)) return false;
+  const code = (err as { code?: unknown }).code;
+  return typeof code === "string" && code.startsWith("commander.");
 }

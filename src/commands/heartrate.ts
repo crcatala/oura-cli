@@ -54,6 +54,7 @@ export function registerHeartrate(program: Command, ctx: CliContext, client: Our
       output(ctx, hours, {
         columns: bucketColumns(bucket),
         formatter: (data) => formatPlain(data as HourlyHeartRate[], bucket),
+        quietKey: "hour",
       });
     });
 }

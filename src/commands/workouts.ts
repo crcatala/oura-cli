@@ -9,10 +9,30 @@ const COLUMNS: ColumnConfig[] = [
   { key: "day", header: "Day" },
   { key: "activity", header: "Activity" },
   { key: "calories", header: "Cal" },
-  { key: "distance", header: "Dist" },
+  { key: "distance_km", header: "Dist (km)" },
   { key: "intensity", header: "Intensity" },
   { key: "source", header: "Source" },
 ];
+
+interface WorkoutRow {
+  day: string;
+  activity: string;
+  calories: string;
+  distance_km: string;
+  intensity: string;
+  source: string;
+}
+
+function roundWorkout(w: Workout): WorkoutRow {
+  return {
+    day: w.day,
+    activity: w.activity,
+    calories: w.calories != null ? String(Math.round(w.calories)) : "—",
+    distance_km: w.distance != null ? (w.distance / 1000).toFixed(2) : "—",
+    intensity: w.intensity,
+    source: w.source ?? "—",
+  };
+}
 
 /**
  * `oura workouts` — workout sessions with --date / --days / --start/--end
@@ -36,19 +56,20 @@ export function registerWorkouts(program: Command, ctx: CliContext, client: Oura
 
       // Single-day queries use the [date, +1) workaround — Oura returns
       // nothing when start_date == end_date (verified in sandbox).
-      const rows =
+      const raw =
         window.start === window.end
           ? await client.workoutsDay(window.start)
           : await client.workouts(window.start, window.end);
+      const rows = raw.map(roundWorkout);
 
       output(ctx, rows, {
         columns: COLUMNS,
-        formatter: (data) => formatPlain(data as Workout[]),
+        formatter: (data) => formatPlain(data as WorkoutRow[]),
       });
     });
 }
 
-function formatPlain(rows: Workout[]): string {
+function formatPlain(rows: WorkoutRow[]): string {
   if (rows.length === 0) return "(no workouts in this range)";
   return rows
     .map((w) => {
@@ -56,9 +77,9 @@ function formatPlain(rows: Workout[]): string {
         w.day,
         w.activity,
         `intensity=${w.intensity}`,
-        w.source ? `source=${w.source}` : null,
-        w.calories != null ? `${w.calories} cal` : null,
-        w.distance != null ? `${(w.distance / 1000).toFixed(2)} km` : null,
+        w.source !== "—" ? `source=${w.source}` : null,
+        `${w.calories} cal`,
+        `${w.distance_km} km`,
       ].filter((part): part is string => part !== null);
       return parts.join("  ");
     })
