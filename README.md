@@ -1,6 +1,6 @@
-# oura-cli — M1 Spike
+# oura-cli
 
-An **OAuth2-only** TypeScript CLI for the [Oura Ring API v2](https://cloud.ouraring.com/v2/docs), built for AI-agent integration and personal health monitoring. Standalone repo spun off from the `research-learning-agent` experiments (2026-08); current status: **M2/MVP complete** — plan and remaining roadmap live in [`docs/implementation-plan.md`](docs/implementation-plan.md) and [`PLAN.md`](PLAN.md).
+An **OAuth2-only** TypeScript CLI for the [Oura Ring API v2](https://cloud.ouraring.com/v2/docs), built for AI-agent integration and personal health monitoring. Published on npm as **`@crcatala/oura-cli`** (installs the `oura` and `oura-cli` commands; releases follow [RELEASING.md](RELEASING.md)). Standalone repo spun off from the `research-learning-agent` experiments (2026-08); current status: **M2/MVP complete** — plan and remaining roadmap live in [`docs/implementation-plan.md`](docs/implementation-plan.md) and [`PLAN.md`](PLAN.md).
 
 > **Unofficial software:** not affiliated with, endorsed by, or sponsored by Oura Health Oy. "Oura" is a trademark of Oura Health Oy. Personal access tokens were **deprecated December 2025** — this CLI uses OAuth2 only.
 
@@ -103,10 +103,86 @@ Output is JSON automatically when piped (non-TTY); exit codes: `0` ok, `1` gener
 ## Development
 
 ```bash
-npm test          # 81 unit + integration tests (mocked fetch + real loopback)
-npm run lint      # biome
+npm test           # unit + integration tests (mocked fetch)
+npm run lint       # biome
 npm run typecheck
-npm run test:live # gated: requires OURA_CLIENT_ID + OURA_CLIENT_SECRET
+npm run verify     # build + test + lint + typecheck + package smoke test
 ```
 
-Not in v1 (see [`docs/implementation-plan.md`](docs/implementation-plan.md) Non-Goals): webhooks, tags, offline cache/digest, sessions/sleep-time/cardiovascular age, multi-user OAuth. Remaining before M3 release: npm publish (`release-it`) and the live-test of the loopback login flow (see [`PLAN.md`](PLAN.md)).
+The CLI is ESM/TypeScript built with `tsc`; `npm run build` (also `prepack`) produces `dist/`.
+
+### Live tests (read-only, maintainer-only)
+
+`tests/live/` runs against the **real** Oura API using env-provided OAuth tokens. It is
+**opt-in and read-only** — only GET commands (`today`, `sleep`, `heartrate`, `workouts`,
+`profile`, `doctor`, …) run; nothing logs in, revokes, or writes data. Requests are
+serialized and paced at 250 ms by default (`OURA_LIVE_DELAY_MS` to tune). Use a token set
+for a ring you don't mind being read.
+
+#### Running locally
+
+```bash
+OURA_LIVE_TESTS=1 \
+OURA_ACCESS_TOKEN=... \
+OURA_REFRESH_TOKEN=... \
+OURA_CLIENT_ID=... \
+OURA_CLIENT_SECRET=... \
+npm run test:live
+```
+
+`scripts/require-live-test-env.mjs` gates the run: without `OURA_LIVE_TESTS=1` **and** all four
+variables it exits 1. The suite also self-skips in plain `npm test` runs (`describe.skipIf`),
+so it is safe for anyone to have on disk.
+
+#### How they work in CI
+
+The **Live Tests** workflow (`.github/workflows/live-tests.yml`) runs the same suite against a
+PR's head commit. It has two entry points:
+
+- **`/run-live-tests` comment on a PR** (preferred) — only the repository owner can trigger
+  it, fork PRs are rejected, and both `github.actor` and `github.triggering_actor` must be
+  the owner, so a collaborator cannot re-run an owner-approved job.
+- **Manual `workflow_dispatch`** from the Actions tab, typing `RUN` in the `confirm` input
+  (optionally pinning `pr_number`/`pr_sha` for a status update).
+
+How the three jobs split the work:
+
+| Job | Permissions | What it does |
+|---|---|---|
+| `prepare` | `pull-requests: read` | Authorizes the run (owner + same-repo check), resolves the PR head SHA |
+| `test` | `contents: read` (no write token) | Checks out that SHA, runs `npm run test:live` with the secrets injected from the protected `live-tests` environment |
+| `report` | `checks: write`, `pull-requests: write` | Posts a **Live Tests** check + PR comment with the tested SHA and a link to the logs |
+
+The `test` job deliberately has **no write token** — it executes PR-controlled code, so it
+cannot touch the repo or other secrets. Results appear as a GitHub check named "Live Tests"
+and a PR comment, regardless of pass/fail.
+
+#### One-time setup
+
+1. **Register an Oura app** in the developer portal with redirect URI
+   `http://localhost:9876/callback/` (trailing slash required — see
+   [Real auth](#real-auth-oauth2-one-time-setup)).
+2. **Mint a token set** for the ring you'll read from: run `oura auth login` with that app's
+   client id/secret, then export the resulting access + refresh tokens.
+3. **Create the `live-tests` environment** in repo **Settings → Environments → New
+   environment**, and add the four secrets it reads:
+   `OURA_LIVE_ACCESS_TOKEN`, `OURA_LIVE_REFRESH_TOKEN`, `OURA_LIVE_CLIENT_ID`,
+   `OURA_LIVE_CLIENT_SECRET`.
+4. **Keep the tokens fresh.** Oura refresh tokens are single-use (rotated on refresh). Live
+   runs only consume the refresh token if the access token 401s mid-run, but when that
+   happens the stored secret goes stale — re-mint the pair before a CI run if the last
+   one was more than a day or two ago.
+
+Then just comment `/run-live-tests` on any same-repo PR.
+
+### Releases (maintainers only)
+
+See [RELEASING.md](RELEASING.md) for prerequisites, initial and subsequent release
+procedures (`release-it` + Keep a Changelog), recovery options, and post-publish verification.
+
+## Out of scope (v1)
+
+Webhooks, tags, offline cache/digest, sessions/sleep-time/cardiovascular age, multi-user
+OAuth (see [`docs/implementation-plan.md`](docs/implementation-plan.md) Non-Goals).
+Remaining before the first npm publish: live-verify the loopback login flow and add the
+repo secrets (see [`PLAN.md`](PLAN.md)).

@@ -57,16 +57,16 @@ tests/ unit(4) + integration(1)   # 83 tests, all green
 - [x] Settle auth-required exit code — **exit 1 + envelope code `AUTH_REQUIRED`** (cli-starter convention; no bespoke exit 3). `AuthRequiredError` renamed to `AuthError` to match the collection; 401s also exit 1 with `http_401` in the envelope. Recorded in `cli-playbook.md` (collection-wide — see followups register item 4).
 
 ### Phase 5: Distribution
-- [ ] CI — see `.github/workflows/ci.yml` (added at spin-off)
-- [ ] npm publishing via `release-it` (`oura-cli` or `@crcatala/oura-cli`), prepublish verification
-- [ ] Live-test docs: registering an Oura app, scopes, headless notes (mostly in README already)
+- [x] CI — `.github/workflows/ci.yml` (build/test/lint/typecheck/package-smoke on Node 22+24) plus `.github/workflows/live-tests.yml` (maintainer-only read-only live tests via `/run-live-tests`)
+- [ ] npm publishing via `release-it` — tooling in place (`.release-it.json` + keep-a-changelog, `verify`/`release*`/`test:package` scripts, `RELEASING.md`); first publish is `npm run release:first` as `@crcatala/oura-cli`
+- [x] Live-test docs + read-only live suite — `tests/live/` (GET-only, opt-in via `OURA_LIVE_TESTS=1`, paced); app-registration/scopes/headless notes in README
 - [ ] Optional post-v1: Homebrew tap / standalone binaries (`bun build --compile`)
 
 ### Pre-release checklist
 - [ ] Live-verify the full OAuth2 loopback login flow against a real Oura app (login → status → refresh rotation → logout/revoke)
 - [x] Decide the `today --quiet` / `--table` shapes above — `--table`/`--plain` ship as a per-section briefing; `--quiet` prints the date; `--sections` applies to the briefing and JSON, quiet always emits the date
 - [ ] Document the auth-required pattern in the collection's `cli-playbook.md` (monorepo)
-- [ ] Add live-test creds as repo secrets (needed once live tests run in CI)
+- [ ] Add live-test creds — `OURA_LIVE_ACCESS_TOKEN` / `OURA_LIVE_REFRESH_TOKEN` / `OURA_LIVE_CLIENT_ID` / `OURA_LIVE_CLIENT_SECRET` in a protected `live-tests` GitHub environment (read by the `/run-live-tests` workflow); step-by-step in README → Development → Live tests → One-time setup
 
 ### Non-goals (v1 — from implementation plan)
 Webhooks (defer; polling is safe at 5k req/5min) · tags (deprecated) · offline SQLite cache/digest · sessions/sleep-time/rest-mode/cardiovascular age · multi-user OAuth.
