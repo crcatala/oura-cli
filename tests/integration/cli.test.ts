@@ -485,7 +485,12 @@ describe("CLI integration (mocked fetch)", () => {
     const cap = capture();
     const code = await main(
       ["--json", "doctor"],
-      { OURA_CONFIG_DIR: join(mkdtempSync(join(tmpdir(), "oura-cli-int-")), "cfg") },
+      {
+        // Force the config-file store so this stays hermetic even when the
+        // developer's OS keyring holds real credentials.
+        OURA_CONFIG_DIR: join(mkdtempSync(join(tmpdir(), "oura-cli-int-")), "cfg"),
+        OURA_USE_CONFIG: "1",
+      },
       {
         fetcher: fixtureFetcher() as unknown as typeof fetch,
         stdout: cap.stdout,
@@ -602,7 +607,10 @@ describe("CLI integration (mocked fetch)", () => {
     const code = await main(
       ["--json", "sleep", "--date", "2026-01-18"],
       {
+        // Force the config-file store so this stays hermetic even when the
+        // developer's OS keyring holds real credentials.
         OURA_CONFIG_DIR: join(mkdtempSync(join(tmpdir(), "oura-cli-int-")), "cfg"),
+        OURA_USE_CONFIG: "1",
       },
       {
         fetcher: fixtureFetcher() as unknown as typeof fetch,
