@@ -1,6 +1,6 @@
 {
   "name": "@crcatala/oura-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OAuth2-only TypeScript CLI for the Oura Ring API v2 (unofficial)",
   "type": "module",
   "main": "dist/index.js",
