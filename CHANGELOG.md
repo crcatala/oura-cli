@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Trimmed the README: collapsed the 2026 IdP note into a collapsible
+  disclosure and removed the "Out of scope" section.
+
 ## [0.2.0] - 2026-08-07
 
 ### Added
