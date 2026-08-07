@@ -22,7 +22,7 @@ export type {
 } from "./types.js";
 export { nextDay, resolveDate, resolveDateWindow } from "./utils/date.js";
 export {
-  AuthRequiredError,
+  AuthError,
   CliError,
   EXIT,
   OuraApiError,

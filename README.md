@@ -90,7 +90,7 @@ Global flags: `--json` `--plain` `--table` `--quiet` `--no-color` `--verbose` `-
 
 Window flags are mutually exclusive: `--date`, `--days N`, and `--start/--end` each define the window on their own; combining any two is a usage error (no silent precedence). `--days N` is the last N days ending today.
 
-Output is JSON automatically when piped (non-TTY); exit codes: `0` ok, `1` general, `2` usage, `3` auth required. Errors are JSON envelopes in `--json` mode.
+Output is JSON automatically when piped (non-TTY); exit codes: `0` ok, `1` general, `2` usage, `130` interrupted. "Auth required" also exits `1`; machine consumers distinguish it via the JSON error envelope (`error.kind: "auth"`, `error.code: "AUTH_REQUIRED"`). Errors are JSON envelopes in `--json` mode.
 
 ## Design highlights (from the research)
 
@@ -109,4 +109,4 @@ npm run typecheck
 npm run test:live # gated: requires OURA_CLIENT_ID + OURA_CLIENT_SECRET
 ```
 
-Not in v1 (see [`docs/implementation-plan.md`](docs/implementation-plan.md) Non-Goals): webhooks, tags, offline cache/digest, sessions/sleep-time/cardiovascular age, multi-user OAuth. Remaining before M3 release: npm publish (`release-it`), live-test of the loopback login flow, and the auth-required exit-code decision (see [`PLAN.md`](PLAN.md)).
+Not in v1 (see [`docs/implementation-plan.md`](docs/implementation-plan.md) Non-Goals): webhooks, tags, offline cache/digest, sessions/sleep-time/cardiovascular age, multi-user OAuth. Remaining before M3 release: npm publish (`release-it`) and the live-test of the loopback login flow (see [`PLAN.md`](PLAN.md)).
