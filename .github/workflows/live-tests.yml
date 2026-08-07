@@ -30,6 +30,7 @@ jobs:
       github.actor == github.repository_owner &&
       github.triggering_actor == github.repository_owner
     runs-on: ubicloud-standard-2
+    timeout-minutes: 2
     permissions:
       pull-requests: read
     outputs:
@@ -149,6 +150,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-2
+    timeout-minutes: 2
     permissions:
       checks: write
       pull-requests: write
