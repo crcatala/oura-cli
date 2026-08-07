@@ -65,7 +65,11 @@ oura --sandbox --json today | jq '.sleep.score'
    oura auth logout       # revoke + clear stored credentials
    ```
 
-> **Note (2026):** Oura migrated to a new identity provider (`moi.ouraring.com`); the public docs at `cloud.ouraring.com/docs/authentication` are stale (legacy scope names + token URL). The CLI targets the current IdP, requests only valid scope names (`daily`, `heartrate`, `workout`, `session`, `spo2Daily`, `personal`, `email`, plus `stress`, `ringConfiguration`, `heartHealth`, `tag`), and records which scopes Oura actually granted.
+<details>
+<summary><strong>Note (2026):</strong> Oura migrated to a new identity provider</summary>
+
+The public docs at `cloud.ouraring.com/docs/authentication` are stale (legacy scope names + token URL). The CLI targets the current IdP (`moi.ouraring.com`), requests only valid scope names (`daily`, `heartrate`, `workout`, `session`, `spo2Daily`, `personal`, `email`, plus `stress`, `ringConfiguration`, `heartHealth`, `tag`), and records which scopes Oura actually granted.
+</details>
 
 ### Token storage
 
@@ -211,9 +215,6 @@ The **Live Tests** GitHub workflow runs this suite against a same-repo PR when t
 
 See [RELEASING.md](RELEASING.md) for the release-it + Keep a Changelog workflow, recovery options, and post-publish verification.
 
-## Out of scope
-
-Webhooks, tags, offline cache/digest, sessions/sleep-time/cardiovascular age, and multi-user OAuth.
 
 ## Contributing & security
 
