@@ -104,10 +104,7 @@ export function makeDailyCommand(
     // custom format is provided (covers all 7 daily-summary commands).
     const cols = spec.columns;
     const defaultFmt =
-      !fmt && cols
-        ? (d: unknown) =>
-            formatDailyPlain(Array.isArray(d) ? (d as HasDay[]) : d ? [d as HasDay] : [], cols)
-        : undefined;
+      !fmt && cols ? (d: unknown) => formatDailyPlain(d as HasDay | HasDay[], cols) : undefined;
 
     output(ctx, data, {
       columns: spec.columns,

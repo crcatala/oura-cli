@@ -20,6 +20,7 @@ export interface ProgramDeps {
 export function buildProgram(deps: ProgramDeps): Command {
   const { ctx, client, auth } = deps;
   const program = new Command();
+  program.exitOverride();
 
   program
     .name("oura")

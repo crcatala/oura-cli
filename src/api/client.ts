@@ -230,26 +230,7 @@ export class OuraClient {
     endpoint: string,
     params: Record<string, string>,
   ): Promise<T | null> {
-    if (!this.accessToken && !this.sandbox) {
-      throw new AuthError("No credentials configured", "Run: oura auth login");
-    }
-    const url = new URL(`${this.baseUrl}/${endpoint}`);
-    for (const [k, v] of Object.entries(params)) {
-      url.searchParams.set(k, v);
-    }
-
-    let res = await this.doFetch(url);
-    if (res.status === 401 && this.refreshToken) {
-      await this.serializedRefresh();
-      res = await this.doFetch(url);
-    }
-
-    if (!res.ok) {
-      const body = await res.text();
-      throw new OuraApiError(res.status, body);
-    }
-
-    return (await res.json()) as T;
+    return this.request<T>(endpoint, params);
   }
 
   private async request<T>(endpoint: string, params: Record<string, string>): Promise<T> {

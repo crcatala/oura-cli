@@ -96,7 +96,6 @@ export async function main(
       client,
       auth: { env, store, fetcher: opts.fetcher, openBrowser: opts.openBrowser, argv },
     });
-    program.exitOverride();
 
     // argv is already user args (run.ts slices the node/script prefix).
     await program.parseAsync(argv, { from: "user" });
