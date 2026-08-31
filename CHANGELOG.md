@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a command to retrieve raw sleep periods.
+
+### Changed
+
+- Added npm, license, and CI badges to the README.
+
 ## [0.2.1] - 2026-08-07
 
 ### Changed
