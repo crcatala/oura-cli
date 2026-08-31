@@ -96,7 +96,24 @@ export async function main(
       ctx,
       client,
       auth: { env, store, fetcher: opts.fetcher, openBrowser: opts.openBrowser, argv },
+      stdout: opts.stdout,
+      stderr: opts.stderr,
     });
+
+    // Commander treats a command with nested subcommands and no subcommand as
+    // an error, even though showing help is the useful behavior here.
+    // Handle these cases before parsing so help is successful and goes to stdout.
+    if (argv.length === 0) {
+      program.outputHelp();
+      return 0;
+    }
+    if (argv.length === 1) {
+      const command = program.commands.find((candidate) => candidate.name() === argv[0]);
+      if (command && command.commands.length > 0) {
+        command.outputHelp();
+        return 0;
+      }
+    }
 
     // argv is already user args (run.ts slices the node/script prefix).
     await program.parseAsync(argv, { from: "user" });
@@ -107,7 +124,7 @@ export async function main(
     // Help/version (exitOverride with exitCode 0) pass through directly.
     if (isCommanderError(err)) {
       const exit = (err as { exitCode?: number }).exitCode ?? 1;
-      if (exit === 0) return 0; // --help, --version
+      if (exit === 0 || err.code === "commander.help") return 0; // --help, --version, no command
       const msg =
         err.code === "commander.unknownOption" ? err.message : `Invalid usage: ${err.message}`;
       outputError(ctx, new UsageError(msg));

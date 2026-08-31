@@ -187,10 +187,41 @@ function assertDefined<T>(value: T | null | undefined): asserts value is T {
 }
 
 describe("CLI integration (mocked fetch)", () => {
-  it("uses the package version for --version", () => {
+  it("uses the package version for --version", async () => {
+    const cap = capture();
     const packageJson = createRequire(import.meta.url)("../../package.json") as { version: string };
+    const code = await main(["--version"], env(), {
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
 
+    expect(code).toBe(0);
+    expect(cap.out().trim()).toBe(packageJson.version);
     expect(VERSION).toBe(packageJson.version);
+  });
+
+  it("shows help and succeeds when no command is provided", async () => {
+    const cap = capture();
+    const code = await main([], env(), {
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Usage: oura");
+    expect(cap.err()).toBe("");
+  });
+
+  it("shows subcommand help and succeeds when no subcommand is provided", async () => {
+    const cap = capture();
+    const code = await main(["auth"], env(), {
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Usage: oura auth");
+    expect(cap.err()).toBe("");
   });
 
   it("sleep --json returns the daily document", async () => {
