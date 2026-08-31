@@ -130,6 +130,8 @@ export interface VO2Max extends HasDay {
 }
 
 export interface SleepPeriod extends HasDay {
+  /** Additional upstream fields are retained in raw sleep-session output. */
+  [key: string]: unknown;
   id: string;
   day: ISODate;
   type: string;

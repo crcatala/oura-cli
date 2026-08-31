@@ -206,11 +206,11 @@ export class OuraClient {
   }
 
   private async requestDayList<T extends HasDay>(endpoint: string, date: string): Promise<T[]> {
-    const res = await this.request<OuraApiResponse<T>>(endpoint, {
+    const rows = await this.range<T>(endpoint, {
       start_date: date,
       end_date: nextDay(date),
     });
-    return (res.data ?? []).filter((row) => row.day === date);
+    return rows.filter((row) => row.day === date);
   }
 
   private async range<T>(endpoint: string, params: Record<string, string>): Promise<T[]> {

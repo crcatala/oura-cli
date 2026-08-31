@@ -105,6 +105,19 @@ describe.skipIf(!liveEnabled)("live API (read-only)", () => {
     }, 60_000);
   }
 
+  it("sleep-periods returns raw sessions for a bounded day", async () => {
+    const { code, out } = await run(["--json", "sleep-periods", "--date", daysAgo(1)]);
+    expect(code).toBe(0);
+    const parsed = JSON.parse(out);
+    expect(Array.isArray(parsed)).toBe(true);
+    for (const session of parsed) {
+      expect(session.day).toBe(daysAgo(1));
+      for (const key of ["id", "bedtime_start", "bedtime_end", "total_sleep_duration", "type"]) {
+        expect(session).toHaveProperty(key);
+      }
+    }
+  }, 60_000);
+
   it("heartrate aggregates a recent 48h window", async () => {
     const { code, out } = await run([
       "--json",

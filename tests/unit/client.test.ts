@@ -81,6 +81,30 @@ describe("OuraClient.requestDay", () => {
   });
 });
 
+describe("OuraClient sleep periods", () => {
+  it("paginates the bounded request and filters records by assigned day", async () => {
+    const page1 = {
+      data: [
+        { id: "sleep-1", day: "2026-01-18" },
+        { id: "next-day", day: "2026-01-19" },
+      ],
+      next_token: "page-2",
+    };
+    const page2 = { data: [{ id: "sleep-2", day: "2026-01-18" }], next_token: null };
+    const { fetcher, calls } = makeFetcher((url) =>
+      jsonResponse(200, url.includes("next_token=page-2") ? page2 : page1),
+    );
+
+    const rows = await apiClient(fetcher).sleepPeriods("2026-01-18");
+    expect(rows).toEqual([page1.data[0], page2.data[0]]);
+    expect(calls).toHaveLength(2);
+    expect(calls[0].url).toContain("/sleep?");
+    expect(calls[0].url).toContain("start_date=2026-01-18");
+    expect(calls[0].url).toContain("end_date=2026-01-19");
+    expect(calls[1].url).toContain("next_token=page-2");
+  });
+});
+
 describe("OuraClient.range pagination", () => {
   it("loops next_token until exhausted", async () => {
     const page1 = { data: [{ day: "2026-01-01", score: 10 }], next_token: "abc" };
