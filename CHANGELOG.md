@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Show help when options are provided without a command or when the command is
+  missing.
+- Derive the CLI version from package metadata.
+
 ## [0.3.0] - 2026-08-31
 
 ### Added
