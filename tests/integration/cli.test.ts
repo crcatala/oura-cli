@@ -1,8 +1,10 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli-main.js";
+import { VERSION } from "../../src/version.js";
 
 const sleepDoc = {
   id: "daily_sleep-0-2026-1-18",
@@ -185,6 +187,55 @@ function assertDefined<T>(value: T | null | undefined): asserts value is T {
 }
 
 describe("CLI integration (mocked fetch)", () => {
+  it("uses the package version for --version", async () => {
+    const cap = capture();
+    const packageJson = createRequire(import.meta.url)("../../package.json") as { version: string };
+    const code = await main(["--version"], env(), {
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+
+    expect(code).toBe(0);
+    expect(cap.out().trim()).toBe(packageJson.version);
+    expect(VERSION).toBe(packageJson.version);
+  });
+
+  it("shows help and succeeds when no command is provided", async () => {
+    const cap = capture();
+    const code = await main([], env(), {
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Usage: oura");
+    expect(cap.err()).toBe("");
+  });
+
+  it("shows help for valid global options without a command", async () => {
+    const cap = capture();
+    const code = await main(["--json"], env(), {
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Usage: oura");
+    expect(cap.err()).toBe("");
+  });
+
+  it("shows subcommand help and succeeds when no subcommand is provided", async () => {
+    const cap = capture();
+    const code = await main(["auth"], env(), {
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Usage: oura auth");
+    expect(cap.err()).toBe("");
+  });
+
   it("sleep --json returns the daily document", async () => {
     const cap = capture();
     const code = await main(["--json", "sleep", "--date", "2026-01-18"], env(), {

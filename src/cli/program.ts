@@ -16,11 +16,18 @@ export interface ProgramDeps {
   ctx: CliContext;
   client: OuraClient;
   auth: AuthDeps;
+  stdout?: NodeJS.WritableStream;
+  stderr?: NodeJS.WritableStream;
 }
 
 export function buildProgram(deps: ProgramDeps): Command {
   const { ctx, client, auth } = deps;
   const program = new Command();
+  program.configureOutput({
+    writeOut: (message) => (deps.stdout ?? process.stdout).write(message),
+    // Errors are rendered by cli-main into the CLI's structured error format.
+    writeErr: () => {},
+  });
   program.exitOverride();
 
   program
