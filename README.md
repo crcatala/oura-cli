@@ -19,7 +19,7 @@ An **OAuth2-only** TypeScript CLI for the [Oura Ring API v2](https://cloud.ourar
 
 ## Requirements
 
-- Node.js 22+
+- Node.js 22.12+
 - For real data: an Oura Ring (Gen3+ for heart rate) and a registered Oura developer app
 
 ## Installation
