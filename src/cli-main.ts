@@ -101,17 +101,20 @@ export async function main(
     });
 
     // Commander treats a command with nested subcommands and no subcommand as
-    // an error, even though showing help is the useful behavior here.
-    // Handle these cases before parsing so help is successful and goes to stdout.
-    if (argv.length === 0) {
-      program.outputHelp();
-      return 0;
-    }
-    if (argv.length === 1) {
-      const command = program.commands.find((candidate) => candidate.name() === argv[0]);
-      if (command && command.commands.length > 0) {
-        command.outputHelp();
+    // an error, even though showing help is the useful behavior here. Handle
+    // these cases before parsing so help is successful and goes to stdout.
+    const positional = getPositionalArgs(argv);
+    if (positional) {
+      if (positional.length === 0) {
+        program.outputHelp();
         return 0;
+      }
+      if (positional.length === 1) {
+        const command = program.commands.find((candidate) => candidate.name() === positional[0]);
+        if (command && command.commands.length > 0) {
+          command.outputHelp();
+          return 0;
+        }
       }
     }
 
@@ -137,6 +140,37 @@ export async function main(
         : 1;
     return exitCode;
   }
+}
+
+function getPositionalArgs(argv: string[]): string[] | null {
+  const flags = new Set([
+    "--json",
+    "--plain",
+    "--table",
+    "-q",
+    "--quiet",
+    "--no-color",
+    "--verbose",
+    "--debug",
+    "--sandbox",
+  ]);
+  const positional: string[] = [];
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--") return null;
+    if (flags.has(arg)) continue;
+    if (arg === "--port") {
+      if (i + 1 >= argv.length || argv[i + 1].startsWith("-")) return null;
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--port=")) continue;
+    if (arg === "--help" || arg === "-h" || arg === "--version" || arg === "-V") return null;
+    if (arg.startsWith("-")) return null;
+    positional.push(arg);
+  }
+  return positional;
 }
 
 function isCommanderError(err: unknown): err is Error & { code: string } {

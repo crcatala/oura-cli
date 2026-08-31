@@ -212,6 +212,18 @@ describe("CLI integration (mocked fetch)", () => {
     expect(cap.err()).toBe("");
   });
 
+  it("shows help for valid global options without a command", async () => {
+    const cap = capture();
+    const code = await main(["--json"], env(), {
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Usage: oura");
+    expect(cap.err()).toBe("");
+  });
+
   it("shows subcommand help and succeeds when no subcommand is provided", async () => {
     const cap = capture();
     const code = await main(["auth"], env(), {
