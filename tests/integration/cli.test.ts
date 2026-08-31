@@ -1,8 +1,10 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli-main.js";
+import { VERSION } from "../../src/version.js";
 
 const sleepDoc = {
   id: "daily_sleep-0-2026-1-18",
@@ -185,6 +187,12 @@ function assertDefined<T>(value: T | null | undefined): asserts value is T {
 }
 
 describe("CLI integration (mocked fetch)", () => {
+  it("uses the package version for --version", () => {
+    const packageJson = createRequire(import.meta.url)("../../package.json") as { version: string };
+
+    expect(VERSION).toBe(packageJson.version);
+  });
+
   it("sleep --json returns the daily document", async () => {
     const cap = capture();
     const code = await main(["--json", "sleep", "--date", "2026-01-18"], env(), {
