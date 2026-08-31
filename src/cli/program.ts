@@ -7,6 +7,7 @@ import { makeDailyCommand } from "../commands/daily.js";
 import { registerDoctor } from "../commands/doctor.js";
 import { registerHeartrate } from "../commands/heartrate.js";
 import { registerProfile } from "../commands/profile.js";
+import { registerSleepPeriods } from "../commands/sleep-periods.js";
 import { registerToday } from "../commands/today.js";
 import { registerWorkouts } from "../commands/workouts.js";
 import { VERSION } from "../version.js";
@@ -72,6 +73,7 @@ export function buildProgram(deps: ProgramDeps): Command {
   // ---- composite + misc ----
   registerToday(program, ctx, client);
   registerProfile(program, ctx, client);
+  registerSleepPeriods(program, ctx, client);
   registerDoctor(program, ctx, client, auth);
 
   // ---- daily summaries ----

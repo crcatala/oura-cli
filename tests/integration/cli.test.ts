@@ -20,6 +20,16 @@ const sleepDoc = {
   timestamp: "2026-01-18T00:00:00.000+00:00",
 };
 
+const sleepPeriodDoc = {
+  id: "sleep-0-2026-1-18",
+  day: "2026-01-18",
+  type: "long_sleep",
+  bedtime_start: "2026-01-17T23:30:00.000+00:00",
+  bedtime_end: "2026-01-18T07:30:00.000+00:00",
+  total_sleep_duration: 27000,
+  movement_30_sec: ["1", "2"],
+};
+
 const readinessDoc = {
   id: "daily_readiness-0-2026-1-18",
   day: "2026-01-18",
@@ -78,6 +88,8 @@ function fixtureFetcher() {
       });
     }
     if (url.includes("/daily_sleep")) return json(200, { data: [sleepDoc], next_token: null });
+    if (new URL(url).pathname.endsWith("/sleep"))
+      return json(200, { data: [sleepPeriodDoc], next_token: null });
     if (url.includes("/daily_readiness"))
       return json(200, { data: [readinessDoc], next_token: null });
     if (url.includes("/daily_activity"))
@@ -184,6 +196,31 @@ describe("CLI integration (mocked fetch)", () => {
     const parsed = JSON.parse(cap.out());
     expect(parsed.day).toBe("2026-01-18");
     expect(parsed.score).toBe(80);
+  });
+
+  it("sleep-periods --json returns unmodified raw session records", async () => {
+    const cap = capture();
+    const code = await main(["--json", "sleep-periods", "--date", "2026-01-18"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(JSON.parse(cap.out())).toEqual([sleepPeriodDoc]);
+  });
+
+  it("sleep-periods returns an empty array for a day with no sessions", async () => {
+    const cap = capture();
+    const code = await main(["--json", "sleep-periods", "--date", "2026-01-18"], env(), {
+      fetcher: (async () =>
+        new Response(JSON.stringify({ data: [], next_token: null }), {
+          headers: { "Content-Type": "application/json" },
+        })) as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(JSON.parse(cap.out())).toEqual([]);
   });
 
   it("sleep --plain produces labeled Key: value pairs", async () => {
@@ -598,6 +635,16 @@ describe("CLI integration (mocked fetch)", () => {
     expect(envelope.error.message).toContain("unknown option");
   });
 
+  it("sleep-periods requires a bounded date", async () => {
+    const cap = capture();
+    const code = await main(["--json", "sleep-periods"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(2);
+  });
+
   it("usage errors exit 2", async () => {
     const cap = capture();
     const code = await main(["--json", "sleep", "--date", "not-a-date"], env(), {
@@ -611,7 +658,7 @@ describe("CLI integration (mocked fetch)", () => {
   it("requires credentials for data commands (exit 1, code AUTH_REQUIRED)", async () => {
     const cap = capture();
     const code = await main(
-      ["--json", "sleep", "--date", "2026-01-18"],
+      ["--json", "sleep-periods", "--date", "2026-01-18"],
       {
         // Force the config-file store so this stays hermetic even when the
         // developer's OS keyring holds real credentials.

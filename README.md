@@ -110,10 +110,21 @@ oura today --quiet                  # print just the resolved date (for scriptin
 ```bash
 oura sleep                                  # today's sleep score + contributors
 oura sleep --date 2026-01-18                # a specific day
+oura sleep-periods --date 2026-01-18 --json # raw sleep sessions for one day
 oura readiness --days 7                     # last 7 days (ending today)
 oura stress --start 2026-01-01 --end 2026-01-07   # an explicit range
 oura activity --table --days 30             # a month of activity as a table
 ```
+
+### Raw sleep sessions
+
+`sleep-periods` returns every raw Oura sleep-session record assigned to one requested day. Its `--json` output is an unmodified array of API records, including session IDs, bedtime timestamps, total sleep duration, and session type.
+
+```bash
+oura sleep-periods --date 2026-01-18 --json
+```
+
+An empty day returns `[]`. `--date` is required to keep the request bounded.
 
 ### Time series
 
