@@ -47,9 +47,8 @@ export function registerSleepPeriods(program: Command, ctx: CliContext, client: 
         start: opts.start,
         end: opts.end,
       });
-      // --date (and a 1-day window) keeps the exclusive-end + day filter.
-      // Ranges pass start_date/end_date through so callers can see what the
-      // /sleep collection returns without the single-day workaround.
+      // --date uses [D-1, D+1) + day===D (UTC bedtime padding; see sleepPeriods).
+      // --start/--end and --days pass the raw /sleep window through unfiltered.
       const rows =
         window.start === window.end
           ? await client.sleepPeriods(window.start)

@@ -118,7 +118,7 @@ oura activity --table --days 30             # a month of activity as a table
 
 ### Raw sleep sessions
 
-`sleep-periods` returns raw Oura sleep-session records. `--date` queries one day using `[date, date+1)` plus a client-side `day` filter (same exclusive-end workaround as other single-day commands). `--start/--end` and `--days` pass the range through to `/v2/usercollection/sleep` with **no** `day` filter, so you can inspect what a wider API window returns. `--json` is an unmodified array of API records, including session IDs, bedtime timestamps, total sleep duration, and session type.
+`sleep-periods` returns raw Oura sleep-session records. `--date D` queries `[D-1, D+1)` and keeps `day === D`. That extra previous day is required because `/sleep` date params behave like a UTC timestamp window on `bedtime_start`, not a filter on `day`: a night assigned to D that starts just after local midnight can have a UTC start on D-1 and is missing from `[D, D+1)`. `--start/--end` and `--days` pass the range through with **no** `day` filter, so you can inspect a raw API window. `--json` is an unmodified array of API records, including session IDs, bedtime timestamps, total sleep duration, and session type.
 
 ```bash
 oura sleep-periods --date 2026-01-18 --json
@@ -194,7 +194,7 @@ oura today --quiet
 
 ## Notes & quirks
 
-- **Exclusive end dates** — Oura's `end_date` is exclusive (and inconsistent per endpoint). Single-day queries use `[date, date+1)` with a client-side `day` filter.
+- **Exclusive end dates** — Oura's `end_date` is exclusive (and inconsistent per endpoint). Most single-day queries use `[date, date+1)` with a client-side `day` filter. `sleep-periods --date D` uses `[D-1, D+1)` because `/sleep` ranges follow UTC `bedtime_start`, not `day`.
 - **Data availability** — sleep/readiness appear only after the ring syncs with the Oura app; `today` degrades gracefully for missing sections.
 - **Refresh rotation** — Oura refresh tokens are single-use. The CLI rotates and persists the new token before the next request.
 
