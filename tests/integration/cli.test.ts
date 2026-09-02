@@ -694,6 +694,32 @@ describe("CLI integration (mocked fetch)", () => {
       stderr: cap.stderr,
     });
     expect(code).toBe(2);
+    expect(JSON.parse(cap.err()).error.message).toContain("requires --date");
+  });
+
+  it("sleep-periods --start/--end passes the raw /sleep range through", async () => {
+    const cap = capture();
+    const requestedUrls: string[] = [];
+    const base = fixtureFetcher();
+    const recording = async (url: string, init?: RequestInit) => {
+      requestedUrls.push(url);
+      return base(url, init);
+    };
+    const code = await main(
+      ["--json", "sleep-periods", "--start", "2026-07-02", "--end", "2026-07-04"],
+      env(),
+      {
+        fetcher: recording as unknown as typeof fetch,
+        stdout: cap.stdout,
+        stderr: cap.stderr,
+      },
+    );
+    expect(code).toBe(0);
+    const sleepUrl = requestedUrls.find((u) => new URL(u).pathname.endsWith("/sleep"));
+    assertDefined(sleepUrl);
+    const params = new URL(sleepUrl).searchParams;
+    expect(params.get("start_date")).toBe("2026-07-02");
+    expect(params.get("end_date")).toBe("2026-07-04");
   });
 
   it("usage errors exit 2", async () => {

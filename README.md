@@ -118,13 +118,14 @@ oura activity --table --days 30             # a month of activity as a table
 
 ### Raw sleep sessions
 
-`sleep-periods` returns every raw Oura sleep-session record assigned to one requested day. Its `--json` output is an unmodified array of API records, including session IDs, bedtime timestamps, total sleep duration, and session type.
+`sleep-periods` returns raw Oura sleep-session records. `--date` queries one day using `[date, date+1)` plus a client-side `day` filter (same exclusive-end workaround as other single-day commands). `--start/--end` and `--days` pass the range through to `/v2/usercollection/sleep` with **no** `day` filter, so you can inspect what a wider API window returns. `--json` is an unmodified array of API records, including session IDs, bedtime timestamps, total sleep duration, and session type.
 
 ```bash
 oura sleep-periods --date 2026-01-18 --json
+oura sleep-periods --start 2026-07-02 --end 2026-07-04 --json
 ```
 
-An empty day returns `[]`. `--date` is required to keep the request bounded.
+An empty result returns `[]`. One of `--date`, `--days`, or `--start/--end` is required to keep the request bounded.
 
 ### Time series
 

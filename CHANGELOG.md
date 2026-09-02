@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `sleep-periods` accepts `--start/--end` and `--days` in addition to `--date`, so a raw `/sleep` range can be inspected without the single-day `day` filter.
+
 ## [0.3.1] - 2026-08-31
 
 ### Fixed

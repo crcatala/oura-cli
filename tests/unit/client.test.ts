@@ -103,6 +103,22 @@ describe("OuraClient sleep periods", () => {
     expect(calls[0].url).toContain("end_date=2026-01-19");
     expect(calls[1].url).toContain("next_token=page-2");
   });
+
+  it("sleepPeriodsRange passes start/end through without a day filter", async () => {
+    const inWindow = { id: "sleep-2", day: "2026-07-02", type: "long_sleep" };
+    const otherDay = { id: "sleep-3", day: "2026-07-03", type: "sleep" };
+    const { fetcher, calls } = makeFetcher(() =>
+      jsonResponse(200, { data: [inWindow, otherDay], next_token: null }),
+    );
+
+    const rows = await apiClient(fetcher).sleepPeriodsRange("2026-07-02", "2026-07-04");
+    expect(rows).toEqual([inWindow, otherDay]);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain("/sleep?");
+    expect(calls[0].url).toContain("start_date=2026-07-02");
+    expect(calls[0].url).toContain("end_date=2026-07-04");
+    expect(calls[0].url).not.toContain("end_date=2026-07-05");
+  });
 });
 
 describe("OuraClient.range pagination", () => {

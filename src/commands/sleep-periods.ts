@@ -3,7 +3,8 @@ import type { OuraClient } from "../api/client.js";
 import type { CliContext } from "../cli/context.js";
 import { type ColumnConfig, output } from "../output/index.js";
 import type { SleepPeriod } from "../types.js";
-import { resolveDate } from "../utils/date.js";
+import { resolveDateWindow } from "../utils/date.js";
+import { UsageError } from "../utils/errors.js";
 
 const COLUMNS: ColumnConfig[] = [
   { key: "day", header: "Day" },
@@ -15,7 +16,7 @@ const COLUMNS: ColumnConfig[] = [
 ];
 
 function formatPlain(rows: SleepPeriod[]): string {
-  if (rows.length === 0) return "(no sleep periods for this day)";
+  if (rows.length === 0) return "(no sleep periods)";
   return rows
     .map(
       (row) =>
@@ -28,12 +29,31 @@ function formatPlain(rows: SleepPeriod[]): string {
 export function registerSleepPeriods(program: Command, ctx: CliContext, client: OuraClient): void {
   program
     .command("sleep-periods")
-    .description("Raw sleep sessions for one day")
-    .requiredOption("--date <date>", 'YYYY-MM-DD, "today", or "yesterday"')
-    .action(async (opts: { date: string }) => {
-      const rows = await client.sleepPeriods(resolveDate(opts.date));
-      // Pass through the API records unchanged so --json retains all fields,
-      // including fields not yet modeled by the CLI's TypeScript interface.
+    .description("Raw sleep sessions for one day or a date range")
+    .option("--date <date>", 'YYYY-MM-DD, "today", or "yesterday"')
+    .option("--days <n>", "Look back N days (from today)")
+    .option("--start <date>", "Range start (YYYY-MM-DD)")
+    .option("--end <date>", "Range end (YYYY-MM-DD)")
+    .action(async (opts: { date?: string; days?: string; start?: string; end?: string }) => {
+      if (!opts.date && opts.days === undefined && !opts.start && !opts.end) {
+        throw new UsageError(
+          "sleep-periods requires --date, --days, or --start/--end",
+          "Single-day queries stay bounded; use --start/--end to inspect a raw API range",
+        );
+      }
+      const window = resolveDateWindow({
+        date: opts.date,
+        days: opts.days !== undefined ? Number(opts.days) : undefined,
+        start: opts.start,
+        end: opts.end,
+      });
+      // --date (and a 1-day window) keeps the exclusive-end + day filter.
+      // Ranges pass start_date/end_date through so callers can see what the
+      // /sleep collection returns without the single-day workaround.
+      const rows =
+        window.start === window.end
+          ? await client.sleepPeriods(window.start)
+          : await client.sleepPeriodsRange(window.start, window.end);
       output(ctx, rows, {
         columns: COLUMNS,
         formatter: (data) => formatPlain(data as SleepPeriod[]),

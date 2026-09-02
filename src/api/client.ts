@@ -108,6 +108,11 @@ export class OuraClient {
     return this.requestDayList<SleepPeriod>(ENDPOINTS.sleep, date);
   }
 
+  /** Raw `/sleep` range with no client-side `day` filter. */
+  async sleepPeriodsRange(start: string, end: string): Promise<SleepPeriod[]> {
+    return this.range<SleepPeriod>(ENDPOINTS.sleep, { start_date: start, end_date: end });
+  }
+
   // ------------------------------------------------------------------------
   // Ranges (paginated)
   // ------------------------------------------------------------------------
