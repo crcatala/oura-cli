@@ -9,8 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `sleep-periods` accepts `--start/--end` and `--days` in addition to `--date`, so a raw `/sleep` range can be inspected without the single-day `day` filter.
-- `sleep-periods --date D` queries `[D-1, D+1)` then keeps `day === D`, so nights that start after local midnight (UTC previous day) are not dropped.
+- `sleep-periods` accepts `--start`, `--end`, and `--days` in addition to
+  `--date`, so the raw `/sleep` window can be inspected without the
+  single-day `day` filter.
+
+### Changed
+
+- Requires Node.js 22.12+ (previously 22+) to align with commander v15.
+
+### Fixed
+
+- `sleep-periods --date D` queries `[D-1, D+1)` and keeps `day === D`, so
+  nights that begin just after local midnight (UTC day D-1) are no longer
+  dropped.
 
 ## [0.3.1] - 2026-08-31
 
