@@ -26,12 +26,20 @@ export function yesterday(): string {
  * anyone west of UTC. Used to build the exclusive upper bound for Oura's
  * date-range queries (see OuraClient.requestDay).
  */
-export function nextDay(date: string): string {
+function shiftUtcDate(date: string, days: number): string {
   const [y, m, d] = date.split("-").map(Number);
-  const t = new Date(Date.UTC(y, m - 1, d + 1));
+  const t = new Date(Date.UTC(y, m - 1, d + days));
   return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(
     t.getUTCDate(),
   ).padStart(2, "0")}`;
+}
+
+export function nextDay(date: string): string {
+  return shiftUtcDate(date, 1);
+}
+
+export function previousDay(date: string): string {
+  return shiftUtcDate(date, -1);
 }
 
 /** Validate a YYYY-MM-DD string; returns it unchanged, or throws UsageError. */

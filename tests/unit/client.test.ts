@@ -99,9 +99,44 @@ describe("OuraClient sleep periods", () => {
     expect(rows).toEqual([page1.data[0], page2.data[0]]);
     expect(calls).toHaveLength(2);
     expect(calls[0].url).toContain("/sleep?");
-    expect(calls[0].url).toContain("start_date=2026-01-18");
+    expect(calls[0].url).toContain("start_date=2026-01-17");
     expect(calls[0].url).toContain("end_date=2026-01-19");
     expect(calls[1].url).toContain("next_token=page-2");
+  });
+
+  it("sleepPeriods keeps only the requested day from the padded window", async () => {
+    const wanted = { id: "sleep-d", day: "2026-07-03", type: "long_sleep" };
+    const { fetcher, calls } = makeFetcher(() =>
+      jsonResponse(200, {
+        data: [
+          { id: "prev", day: "2026-07-02", type: "long_sleep" },
+          wanted,
+          { id: "nap", day: "2026-07-03", type: "sleep" },
+        ],
+        next_token: null,
+      }),
+    );
+
+    const rows = await apiClient(fetcher).sleepPeriods("2026-07-03");
+    expect(rows).toEqual([wanted, { id: "nap", day: "2026-07-03", type: "sleep" }]);
+    expect(calls[0].url).toContain("start_date=2026-07-02");
+    expect(calls[0].url).toContain("end_date=2026-07-04");
+  });
+
+  it("sleepPeriodsRange passes start/end through without a day filter", async () => {
+    const inWindow = { id: "sleep-2", day: "2026-07-02", type: "long_sleep" };
+    const otherDay = { id: "sleep-3", day: "2026-07-03", type: "sleep" };
+    const { fetcher, calls } = makeFetcher(() =>
+      jsonResponse(200, { data: [inWindow, otherDay], next_token: null }),
+    );
+
+    const rows = await apiClient(fetcher).sleepPeriodsRange("2026-07-02", "2026-07-04");
+    expect(rows).toEqual([inWindow, otherDay]);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain("/sleep?");
+    expect(calls[0].url).toContain("start_date=2026-07-02");
+    expect(calls[0].url).toContain("end_date=2026-07-04");
+    expect(calls[0].url).not.toContain("end_date=2026-07-05");
   });
 });
 

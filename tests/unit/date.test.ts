@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatLocalDate,
   nextDay,
+  previousDay,
   resolveDate,
   resolveDateWindow,
   validateISODate,
@@ -27,6 +28,17 @@ describe("nextDay", () => {
   it("is immune to host timezone (UTC arithmetic)", () => {
     // Would fail for UTC-* zones if implemented with local getters.
     expect(nextDay("2026-07-01")).toBe("2026-07-02");
+  });
+});
+
+describe("previousDay", () => {
+  it("subtracts one calendar day", () => {
+    expect(previousDay("2026-01-18")).toBe("2026-01-17");
+  });
+
+  it("handles month and year boundaries", () => {
+    expect(previousDay("2026-02-01")).toBe("2026-01-31");
+    expect(previousDay("2026-01-01")).toBe("2025-12-31");
   });
 });
 

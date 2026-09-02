@@ -17,7 +17,7 @@ import type {
   VO2Max,
   Workout,
 } from "../types.js";
-import { nextDay } from "../utils/date.js";
+import { nextDay, previousDay } from "../utils/date.js";
 import { AuthError, OuraApiError } from "../utils/errors.js";
 import { collectionBase, ENDPOINTS } from "./endpoints.js";
 import { collectPages } from "./pagination.js";
@@ -105,7 +105,22 @@ export class OuraClient {
   }
 
   async sleepPeriods(date: string): Promise<SleepPeriod[]> {
-    return this.requestDayList<SleepPeriod>(ENDPOINTS.sleep, date);
+    // /sleep start_date/end_date do not filter on the document `day` field.
+    // Empirically the range behaves like a UTC timestamp window on bedtime_start.
+    // Oura's Sleep Day is 6pm–6pm; a long_sleep assigned to calendar day D that
+    // begins just after local midnight (e.g. 00:15+02) has bedtime_start on D-1
+    // UTC, so the usual [D, D+1) single-day query never returns it. Pad to
+    // [D-1, D+1) then keep day === D. Other daily endpoints still use [D, D+1).
+    const rows = await this.range<SleepPeriod>(ENDPOINTS.sleep, {
+      start_date: previousDay(date),
+      end_date: nextDay(date),
+    });
+    return rows.filter((row) => row.day === date);
+  }
+
+  /** Raw `/sleep` range with no client-side `day` filter. */
+  async sleepPeriodsRange(start: string, end: string): Promise<SleepPeriod[]> {
+    return this.range<SleepPeriod>(ENDPOINTS.sleep, { start_date: start, end_date: end });
   }
 
   // ------------------------------------------------------------------------
