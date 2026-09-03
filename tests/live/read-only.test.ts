@@ -91,6 +91,7 @@ describe.skipIf(!liveEnabled)("live API (read-only)", () => {
     "spo2",
     "resilience",
     "vo2max",
+    "cardiovascular-age",
   ];
 
   for (const endpoint of dailyEndpoints) {
@@ -145,6 +146,30 @@ describe.skipIf(!liveEnabled)("live API (read-only)", () => {
     expect(Array.isArray(parsed)).toBe(true);
     for (const workout of parsed) {
       expect(typeof workout.activity).toBe("string");
+    }
+  }, 60_000);
+
+  it("sessions --days 30 returns Moment documents", async () => {
+    const { code, out } = await run(["--json", "sessions", "--days", "30"]);
+    expect(code).toBe(0);
+    const parsed = JSON.parse(out);
+    expect(Array.isArray(parsed)).toBe(true);
+    for (const session of parsed) {
+      expect(typeof session.day).toBe("string");
+      expect(typeof session.type).toBe("string");
+      expect(session).toHaveProperty("id");
+    }
+  }, 60_000);
+
+  it("tags --days 30 returns enhanced_tag documents", async () => {
+    const { code, out } = await run(["--json", "tags", "--days", "30"]);
+    expect(code).toBe(0);
+    const parsed = JSON.parse(out);
+    expect(Array.isArray(parsed)).toBe(true);
+    for (const tag of parsed) {
+      expect(typeof tag.start_day).toBe("string");
+      expect(tag).toHaveProperty("id");
+      expect(tag).toHaveProperty("tag_type_code");
     }
   }, 60_000);
 

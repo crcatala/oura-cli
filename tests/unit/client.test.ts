@@ -345,3 +345,124 @@ describe("OuraClient time series & workouts", () => {
     expect(calls).toHaveLength(1);
   });
 });
+
+describe("OuraClient cardiovascular age, sessions, tags", () => {
+  const cardioDoc = {
+    id: "daily_cardiovascular_age-0-2026-1-18",
+    day: "2026-01-18",
+    pulse_wave_velocity: 6.4,
+    vascular_age: 41,
+  };
+  const sessionDoc = {
+    id: "session-nap-0",
+    day: "2026-01-18",
+    type: "nap",
+    start_datetime: "2026-01-18T14:00:00.000+00:00",
+    end_datetime: "2026-01-18T14:25:00.000+00:00",
+    mood: null,
+    heart_rate: { interval: 5, items: [62, 61], timestamp: "2026-01-18T14:00:00.000+00:00" },
+    heart_rate_variability: {
+      interval: 5,
+      items: [40, 42],
+      timestamp: "2026-01-18T14:00:00.000+00:00",
+    },
+    motion_count: { interval: 5, items: [1, 0], timestamp: "2026-01-18T14:00:00.000+00:00" },
+  };
+  const tagDoc = {
+    id: "tag-alcohol-0",
+    tag_type_code: "alcohol",
+    custom_name: null,
+    start_time: "2026-01-18T20:00:00.000+00:00",
+    end_time: null,
+    start_day: "2026-01-18",
+    end_day: null,
+    comment: "two drinks",
+  };
+
+  it("dailyCardiovascular queries [date, +1) and filters on day", async () => {
+    const { fetcher, calls } = makeFetcher((url) => {
+      expect(url).toContain("/daily_cardiovascular_age");
+      expect(url).toContain("start_date=2026-01-18");
+      expect(url).toContain("end_date=2026-01-19");
+      return jsonResponse(200, {
+        data: [cardioDoc, { ...cardioDoc, id: "x", day: "2026-01-19" }],
+        next_token: null,
+      });
+    });
+    const result = await apiClient(fetcher).dailyCardiovascular("2026-01-18");
+    expect(result).toEqual(cardioDoc);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("dailyCardiovascular returns null when the day is empty", async () => {
+    const { fetcher } = makeFetcher(() => jsonResponse(200, { data: [], next_token: null }));
+    expect(await apiClient(fetcher).dailyCardiovascular("2026-01-18")).toBeNull();
+  });
+
+  it("dailyCardiovascularRange passes start/end through", async () => {
+    const { fetcher, calls } = makeFetcher(() =>
+      jsonResponse(200, { data: [cardioDoc], next_token: null }),
+    );
+    const rows = await apiClient(fetcher).dailyCardiovascularRange("2026-01-01", "2026-01-08");
+    expect(rows).toEqual([cardioDoc]);
+    expect(calls[0].url).toContain("start_date=2026-01-01");
+    expect(calls[0].url).toContain("end_date=2026-01-08");
+  });
+
+  it("sessionRange sends start_date/end_date", async () => {
+    const { fetcher, calls } = makeFetcher(() =>
+      jsonResponse(200, { data: [sessionDoc], next_token: null }),
+    );
+    const rows = await apiClient(fetcher).sessionRange("2026-01-01", "2026-02-01");
+    expect(rows).toEqual([sessionDoc]);
+    expect(calls[0].url).toContain("/session?");
+    expect(calls[0].url).toContain("start_date=2026-01-01");
+    expect(calls[0].url).toContain("end_date=2026-02-01");
+  });
+
+  it("sessionDay uses [date, +1) and filters on day (workouts approach, not D-1 padding)", async () => {
+    const { fetcher, calls } = makeFetcher((url) => {
+      expect(url).toContain("/session?");
+      expect(url).toContain("start_date=2026-01-18");
+      expect(url).toContain("end_date=2026-01-19");
+      expect(url).not.toContain("start_date=2026-01-17");
+      return jsonResponse(200, {
+        data: [sessionDoc, { ...sessionDoc, id: "x", day: "2026-01-19" }],
+        next_token: null,
+      });
+    });
+    const rows = await apiClient(fetcher).sessionDay("2026-01-18");
+    expect(rows).toEqual([sessionDoc]);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("enhancedTagRange sends start_date/end_date", async () => {
+    const { fetcher, calls } = makeFetcher(() =>
+      jsonResponse(200, { data: [tagDoc], next_token: null }),
+    );
+    const rows = await apiClient(fetcher).enhancedTagRange("2026-01-01", "2026-01-15");
+    expect(rows).toEqual([tagDoc]);
+    expect(calls[0].url).toContain("/enhanced_tag?");
+    expect(calls[0].url).toContain("start_date=2026-01-01");
+    expect(calls[0].url).toContain("end_date=2026-01-15");
+  });
+
+  it("enhancedTagDay windows on start_day with [date, +1)", async () => {
+    const { fetcher, calls } = makeFetcher((url) => {
+      expect(url).toContain("/enhanced_tag?");
+      expect(url).toContain("start_date=2026-01-18");
+      expect(url).toContain("end_date=2026-01-19");
+      return jsonResponse(200, {
+        data: [
+          tagDoc,
+          { ...tagDoc, id: "next", start_day: "2026-01-19" },
+          { ...tagDoc, id: "no-day-field", start_day: "2026-01-18", day: "2026-01-17" },
+        ],
+        next_token: null,
+      });
+    });
+    const rows = await apiClient(fetcher).enhancedTagDay("2026-01-18");
+    expect(rows.map((r) => r.id)).toEqual(["tag-alcohol-0", "no-day-field"]);
+    expect(calls).toHaveLength(1);
+  });
+});

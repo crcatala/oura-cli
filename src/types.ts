@@ -129,6 +129,13 @@ export interface VO2Max extends HasDay {
   timestamp: DateTime;
 }
 
+export interface DailyCardiovascularAge extends HasDay {
+  id: string;
+  day: ISODate;
+  pulse_wave_velocity: number | null;
+  vascular_age: number | null;
+}
+
 export interface SleepPeriod extends HasDay {
   /** Additional upstream fields are retained in raw sleep-session output. */
   [key: string]: unknown;
@@ -185,6 +192,47 @@ export interface Workout extends HasDay {
   source: string | null;
   start_datetime: DateTime;
   end_datetime: DateTime;
+}
+
+/** Time-series sample attached to session documents. */
+export interface PublicSample {
+  interval: number;
+  items: Array<number | null>;
+  timestamp: DateTime;
+}
+
+export const SESSION_TYPES = [
+  "breathing",
+  "meditation",
+  "nap",
+  "relaxation",
+  "rest",
+  "body_status",
+] as const;
+
+export type SessionType = (typeof SESSION_TYPES)[number];
+
+export interface Session extends HasDay {
+  id: string;
+  day: ISODate;
+  type: SessionType | string;
+  start_datetime: DateTime;
+  end_datetime: DateTime;
+  mood: string | null;
+  heart_rate: PublicSample | null;
+  heart_rate_variability: PublicSample | null;
+  motion_count: PublicSample | null;
+}
+
+export interface EnhancedTag {
+  id: string;
+  tag_type_code: string | null;
+  custom_name: string | null;
+  start_time: DateTime;
+  end_time: DateTime | null;
+  start_day: ISODate;
+  end_day: ISODate | null;
+  comment: string | null;
 }
 
 export interface PersonalInfo {

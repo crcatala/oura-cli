@@ -1,6 +1,6 @@
 ---
 id: oc-c6ye
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-09-03T22:56:40Z
@@ -37,3 +37,9 @@ This is the API's only event-style wellness data beyond workouts and matters for
 - Empty day/range prints "(no data)" without error; null mood renders as an em dash in plain output.
 - Unit tests with a redacted multi-session fixture cover filtering, windowing, and column rendering; README command list and CHANGELOG updated; npm test and npm run lint pass.
 
+
+## Notes
+
+**2026-09-03T23:17:47Z**
+
+Implemented as oura sessions (workouts pattern + --type filter). JSON preserves PublicSample arrays. Single-day uses [D, D+1) day filter, not D-1 padding.

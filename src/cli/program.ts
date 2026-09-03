@@ -7,7 +7,9 @@ import { makeDailyCommand } from "../commands/daily.js";
 import { registerDoctor } from "../commands/doctor.js";
 import { registerHeartrate } from "../commands/heartrate.js";
 import { registerProfile } from "../commands/profile.js";
+import { registerSessions } from "../commands/sessions.js";
 import { registerSleepPeriods } from "../commands/sleep-periods.js";
+import { registerTags } from "../commands/tags.js";
 import { registerToday } from "../commands/today.js";
 import { registerWorkouts } from "../commands/workouts.js";
 import { VERSION } from "../version.js";
@@ -33,7 +35,7 @@ export function buildProgram(deps: ProgramDeps): Command {
   program
     .name("oura")
     .description(
-      "Query Oura Ring health data (sleep, readiness, activity, stress, resilience, SpO2, VO2max, heart rate, workouts)",
+      "Query Oura Ring health data (sleep, readiness, activity, stress, resilience, SpO2, VO2max, cardiovascular age, heart rate, workouts, sessions, tags)",
     )
     .version(VERSION)
     .option("--json", "Machine-readable JSON output")
@@ -207,9 +209,27 @@ export function buildProgram(deps: ProgramDeps): Command {
     ],
   });
 
+  makeDailyCommand(program, ctx, client, {
+    name: "cardiovascular-age",
+    description: "Daily pulse-wave velocity + estimated vascular age",
+    load: (c, s, e) => c.dailyCardiovascularRange(s, e),
+    loadDay: async (c, d) => {
+      const doc = await c.dailyCardiovascular(d);
+      return doc ? [doc] : [];
+    },
+    pick: (rows) => rows[rows.length - 1] ?? null,
+    columns: [
+      { key: "day", header: "Day" },
+      { key: "pulse_wave_velocity", header: "PWV" },
+      { key: "vascular_age", header: "VascularAge" },
+    ],
+  });
+
   // ---- time series & events ----
   registerHeartrate(program, ctx, client);
   registerWorkouts(program, ctx, client);
+  registerSessions(program, ctx, client);
+  registerTags(program, ctx, client);
 
   return program;
 }
