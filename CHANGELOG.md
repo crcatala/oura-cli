@@ -9,13 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `cardiovascular-age` daily command for pulse-wave velocity and estimated
-  vascular age (`/v2/usercollection/daily_cardiovascular_age`).
-- `sessions` command for Oura Moments (breathing, meditation, nap,
-  relaxation, rest, body_status), with optional `--type` filter. `--json`
-  preserves sample arrays.
-- `tags` command for enhanced lifestyle tags (standardized, custom, and
-  text-only). The legacy `/tag` collection is not exposed.
+- Added `oura cardiovascular-age` for daily pulse-wave velocity and vascular
+  age data.
+- Added `oura sessions` for Moments such as meditation, naps, and breathing
+  exercises, with `--type` filtering.
+- Added `oura tags` for enhanced lifestyle event tags.
 
 ## [0.4.0] - 2026-09-01
 
