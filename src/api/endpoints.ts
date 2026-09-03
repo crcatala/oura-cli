@@ -17,11 +17,13 @@ export const ENDPOINTS = {
   dailyResilience: "daily_resilience",
   dailySpO2: "daily_spo2",
   vo2Max: "vO2_max",
+  dailyCardiovascularAge: "daily_cardiovascular_age",
   sleep: "sleep",
   heartrate: "heartrate",
   ringBattery: "ring_battery_level",
   ringConfiguration: "ring_configuration",
   workout: "workout",
   session: "session",
+  enhancedTag: "enhanced_tag",
   personalInfo: "personal_info",
 } as const;

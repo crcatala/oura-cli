@@ -72,6 +72,105 @@ const personalInfo = {
   email: "user@example.com",
 };
 
+const cardioDoc = {
+  id: "daily_cardiovascular_age-0-2026-1-18",
+  day: "2026-01-18",
+  pulse_wave_velocity: 6.4,
+  vascular_age: 41,
+};
+
+const sessionNapDoc = {
+  id: "session-nap-0",
+  day: "2026-01-18",
+  type: "nap",
+  start_datetime: "2026-01-18T14:00:00.000+00:00",
+  end_datetime: "2026-01-18T14:25:00.000+00:00",
+  mood: null,
+  heart_rate: {
+    interval: 5,
+    items: [62, 61, 60],
+    timestamp: "2026-01-18T14:00:00.000+00:00",
+  },
+  heart_rate_variability: {
+    interval: 5,
+    items: [40, 42, 41],
+    timestamp: "2026-01-18T14:00:00.000+00:00",
+  },
+  motion_count: {
+    interval: 5,
+    items: [1, 0, 0],
+    timestamp: "2026-01-18T14:00:00.000+00:00",
+  },
+};
+
+const sessionMeditationDoc = {
+  id: "session-med-0",
+  day: "2026-01-18",
+  type: "meditation",
+  start_datetime: "2026-01-18T07:00:00.000+00:00",
+  end_datetime: "2026-01-18T07:12:00.000+00:00",
+  mood: "good",
+  heart_rate: null,
+  heart_rate_variability: null,
+  motion_count: null,
+};
+
+const sessionNextDayDoc = {
+  id: "session-br-1",
+  day: "2026-01-19",
+  type: "breathing",
+  start_datetime: "2026-01-19T21:00:00.000+00:00",
+  end_datetime: "2026-01-19T21:05:00.000+00:00",
+  mood: "good",
+  heart_rate: null,
+  heart_rate_variability: null,
+  motion_count: null,
+};
+
+const tagAlcoholDoc = {
+  id: "tag-alcohol-0",
+  tag_type_code: "alcohol",
+  custom_name: null,
+  start_time: "2026-01-18T20:00:00.000+00:00",
+  end_time: null,
+  start_day: "2026-01-18",
+  end_day: null,
+  comment: "two drinks",
+};
+
+const tagCustomDoc = {
+  id: "tag-custom-0",
+  tag_type_code: "custom",
+  custom_name: "sauna",
+  start_time: "2026-01-18T18:00:00.000+00:00",
+  end_time: "2026-01-18T18:30:00.000+00:00",
+  start_day: "2026-01-18",
+  end_day: "2026-01-18",
+  comment: null,
+};
+
+const tagTextDoc = {
+  id: "tag-text-0",
+  tag_type_code: null,
+  custom_name: null,
+  start_time: "2026-01-19T09:15:00.000+00:00",
+  end_time: null,
+  start_day: "2026-01-19",
+  end_day: null,
+  comment: "felt off",
+};
+
+const tagTravelDoc = {
+  id: "tag-travel-0",
+  tag_type_code: "travel",
+  custom_name: null,
+  start_time: "2026-01-17T08:00:00.000+00:00",
+  end_time: "2026-01-19T22:00:00.000+00:00",
+  start_day: "2026-01-17",
+  end_day: "2026-01-19",
+  comment: "red-eye",
+};
+
 function fixtureFetcher() {
   return async (url: string, init?: RequestInit): Promise<Response> => {
     const json = (status: number, body: unknown) =>
@@ -134,6 +233,18 @@ function fixtureFetcher() {
         next_token: null,
       });
     if (url.includes("/personal_info")) return json(200, personalInfo);
+    if (url.includes("/daily_cardiovascular_age"))
+      return json(200, { data: [cardioDoc], next_token: null });
+    if (url.includes("/session"))
+      return json(200, {
+        data: [sessionNapDoc, sessionMeditationDoc, sessionNextDayDoc],
+        next_token: null,
+      });
+    if (url.includes("/enhanced_tag"))
+      return json(200, {
+        data: [tagTravelDoc, tagAlcoholDoc, tagCustomDoc, tagTextDoc],
+        next_token: null,
+      });
     // Everything else (stress/spo2/resilience/battery/etc.) — empty collection.
     return json(200, { data: [], next_token: null });
   };
@@ -495,6 +606,287 @@ describe("CLI integration (mocked fetch)", () => {
     expect(workoutUrl).toBeTruthy();
     const params = new URL(workoutUrl).searchParams;
     expect(params.get("start_date")).toBe(offsetDay(params.get("end_date") ?? "", -6));
+  });
+
+  it("cardiovascular-age --date uses the exclusive-end workaround and JSON field names", async () => {
+    const cap = capture();
+    const requestedUrls: string[] = [];
+    const base = fixtureFetcher();
+    const recording = async (url: string, init?: RequestInit) => {
+      requestedUrls.push(url);
+      return base(url, init);
+    };
+    const code = await main(["--json", "cardiovascular-age", "--date", "2026-01-18"], env(), {
+      fetcher: recording as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(JSON.parse(cap.out())).toEqual(cardioDoc);
+    const cardioUrl = requestedUrls.find((u) => u.includes("/daily_cardiovascular_age"));
+    assertDefined(cardioUrl);
+    const params = new URL(cardioUrl).searchParams;
+    expect(params.get("start_date")).toBe("2026-01-18");
+    expect(params.get("end_date")).toBe("2026-01-19");
+  });
+
+  it("cardiovascular-age --plain prints Header: value pairs", async () => {
+    const cap = capture();
+    const code = await main(["--plain", "cardiovascular-age", "--date", "2026-01-18"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Day: 2026-01-18");
+    expect(cap.out()).toContain("PWV: 6.4");
+    expect(cap.out()).toContain("VascularAge: 41");
+  });
+
+  it("cardiovascular-age empty day prints (no data) / JSON null", async () => {
+    const empty = async () =>
+      new Response(JSON.stringify({ data: [], next_token: null }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const plain = capture();
+    expect(
+      await main(["--plain", "cardiovascular-age", "--date", "2026-01-18"], env(), {
+        fetcher: empty as unknown as typeof fetch,
+        stdout: plain.stdout,
+        stderr: plain.stderr,
+      }),
+    ).toBe(0);
+    expect(plain.out().trim()).toBe("(no data)");
+
+    const jsonCap = capture();
+    expect(
+      await main(["--json", "cardiovascular-age", "--date", "2026-01-18"], env(), {
+        fetcher: empty as unknown as typeof fetch,
+        stdout: jsonCap.stdout,
+        stderr: jsonCap.stderr,
+      }),
+    ).toBe(0);
+    expect(JSON.parse(jsonCap.out())).toBeNull();
+  });
+
+  it("cardiovascular-age --days N issues a range request", async () => {
+    const cap = capture();
+    const requestedUrls: string[] = [];
+    const base = fixtureFetcher();
+    const recording = async (url: string, init?: RequestInit) => {
+      requestedUrls.push(url);
+      return base(url, init);
+    };
+    const code = await main(["--json", "cardiovascular-age", "--days", "7"], env(), {
+      fetcher: recording as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    const cardioUrl = requestedUrls.find((u) => u.includes("/daily_cardiovascular_age"));
+    assertDefined(cardioUrl);
+    const params = new URL(cardioUrl).searchParams;
+    const end = params.get("end_date");
+    assertDefined(end);
+    expect(params.get("start_date")).toBe(offsetDay(end, -6));
+  });
+
+  it("sessions --date uses the [date, +1) exclusive-end workaround", async () => {
+    const cap = capture();
+    const requestedUrls: string[] = [];
+    const base = fixtureFetcher();
+    const recording = async (url: string, init?: RequestInit) => {
+      requestedUrls.push(url);
+      return base(url, init);
+    };
+    const code = await main(["--json", "sessions", "--date", "2026-01-18"], env(), {
+      fetcher: recording as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    const parsed = JSON.parse(cap.out());
+    expect(parsed).toEqual([sessionNapDoc, sessionMeditationDoc]);
+    const sessionUrl = requestedUrls.find((u) => u.includes("/session"));
+    assertDefined(sessionUrl);
+    const params = new URL(sessionUrl).searchParams;
+    expect(params.get("start_date")).toBe("2026-01-18");
+    expect(params.get("end_date")).toBe("2026-01-19");
+  });
+
+  it("sessions --json preserves sample arrays and source id", async () => {
+    const cap = capture();
+    const code = await main(["--json", "sessions", "--date", "2026-01-18"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    const parsed = JSON.parse(cap.out());
+    expect(parsed[0]).toEqual(sessionNapDoc);
+    expect(parsed[0].heart_rate.items).toEqual([62, 61, 60]);
+    expect(parsed[0].heart_rate_variability.items).toEqual([40, 42, 41]);
+    expect(parsed[0].id).toBe("session-nap-0");
+  });
+
+  it("sessions --type nap filters client-side", async () => {
+    const cap = capture();
+    const code = await main(
+      ["--json", "sessions", "--date", "2026-01-18", "--type", "nap"],
+      env(),
+      {
+        fetcher: fixtureFetcher() as unknown as typeof fetch,
+        stdout: cap.stdout,
+        stderr: cap.stderr,
+      },
+    );
+    expect(code).toBe(0);
+    expect(JSON.parse(cap.out())).toEqual([sessionNapDoc]);
+  });
+
+  it("sessions --type rejects unknown values with a usage error", async () => {
+    const cap = capture();
+    const code = await main(["--json", "sessions", "--type", "yoga"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(2);
+    const envelope = JSON.parse(cap.err());
+    expect(envelope.error.kind).toBe("usage");
+    expect(envelope.error.code).toBe("UsageError");
+    expect(envelope.error.message).toContain("yoga");
+    expect(envelope.error.message).toContain("meditation");
+  });
+
+  it("sessions --days N returns the range rows as JSON", async () => {
+    const cap = capture();
+    const requestedUrls: string[] = [];
+    const base = fixtureFetcher();
+    const recording = async (url: string, init?: RequestInit) => {
+      requestedUrls.push(url);
+      return base(url, init);
+    };
+    const code = await main(["--json", "sessions", "--days", "7"], env(), {
+      fetcher: recording as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(JSON.parse(cap.out())).toHaveLength(3);
+    const sessionUrl = requestedUrls.find((u) => u.includes("/session"));
+    assertDefined(sessionUrl);
+    const params = new URL(sessionUrl).searchParams;
+    expect(params.get("start_date")).toBe(offsetDay(params.get("end_date") ?? "", -6));
+  });
+
+  it("sessions empty window prints (no data)", async () => {
+    const empty = async () =>
+      new Response(JSON.stringify({ data: [], next_token: null }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const cap = capture();
+    const code = await main(["--plain", "sessions", "--date", "2026-01-18"], env(), {
+      fetcher: empty as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(cap.out().trim()).toBe("(no data)");
+  });
+
+  it("sessions --plain renders null mood as an em dash", async () => {
+    const cap = capture();
+    const code = await main(
+      ["--plain", "sessions", "--date", "2026-01-18", "--type", "nap"],
+      env(),
+      {
+        fetcher: fixtureFetcher() as unknown as typeof fetch,
+        stdout: cap.stdout,
+        stderr: cap.stderr,
+      },
+    );
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("mood=—");
+  });
+
+  it("tags --date windows on start_day with [date, +1)", async () => {
+    const cap = capture();
+    const requestedUrls: string[] = [];
+    const base = fixtureFetcher();
+    const recording = async (url: string, init?: RequestInit) => {
+      requestedUrls.push(url);
+      return base(url, init);
+    };
+    const code = await main(["--json", "tags", "--date", "2026-01-18"], env(), {
+      fetcher: recording as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(JSON.parse(cap.out())).toEqual([tagAlcoholDoc, tagCustomDoc]);
+    const tagUrl = requestedUrls.find((u) => u.includes("/enhanced_tag"));
+    assertDefined(tagUrl);
+    const params = new URL(tagUrl).searchParams;
+    expect(params.get("start_date")).toBe("2026-01-18");
+    expect(params.get("end_date")).toBe("2026-01-19");
+  });
+
+  it("tags --json preserves the complete source documents", async () => {
+    const cap = capture();
+    const code = await main(["--json", "tags", "--days", "7"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(JSON.parse(cap.out())).toEqual([tagTravelDoc, tagAlcoholDoc, tagCustomDoc, tagTextDoc]);
+  });
+
+  it("tags --table falls back to custom_name and marks text-only tags", async () => {
+    const cap = capture();
+    const code = await main(["--table", "tags", "--days", "7"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("Type");
+    expect(cap.out()).toContain("alcohol");
+    expect(cap.out()).toContain("sauna");
+    expect(cap.out()).toContain("(text)");
+    expect(cap.out()).toContain("travel");
+    expect(cap.out()).not.toContain("custom");
+  });
+
+  it("tags --plain falls back to custom_name and marks text-only tags", async () => {
+    const cap = capture();
+    const code = await main(["--plain", "tags", "--days", "7"], env(), {
+      fetcher: fixtureFetcher() as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(cap.out()).toContain("alcohol");
+    expect(cap.out()).toContain("sauna");
+    expect(cap.out()).toContain("(text)");
+    expect(cap.out()).toContain("travel");
+    expect(cap.out()).not.toContain("custom\n");
+  });
+
+  it("tags empty window prints (no data)", async () => {
+    const empty = async () =>
+      new Response(JSON.stringify({ data: [], next_token: null }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const cap = capture();
+    const code = await main(["--plain", "tags", "--date", "2026-01-18"], env(), {
+      fetcher: empty as unknown as typeof fetch,
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+    expect(code).toBe(0);
+    expect(cap.out().trim()).toBe("(no data)");
   });
 
   it("workouts --date uses the [date, +1) exclusive-end workaround", async () => {

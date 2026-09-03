@@ -1,11 +1,13 @@
 import { TOKEN_URL } from "../oauth/flow.js";
 import type {
   DailyActivity,
+  DailyCardiovascularAge,
   DailyReadiness,
   DailyResilience,
   DailySleep,
   DailySpO2,
   DailyStress,
+  EnhancedTag,
   HasDay,
   HeartRateRow,
   OuraApiResponse,
@@ -13,6 +15,7 @@ import type {
   PersonalInfo,
   RingBatteryRow,
   RingConfiguration,
+  Session,
   SleepPeriod,
   VO2Max,
   Workout,
@@ -104,6 +107,10 @@ export class OuraClient {
     return this.requestDay<VO2Max>(ENDPOINTS.vo2Max, date);
   }
 
+  async dailyCardiovascular(date: string): Promise<DailyCardiovascularAge | null> {
+    return this.requestDay<DailyCardiovascularAge>(ENDPOINTS.dailyCardiovascularAge, date);
+  }
+
   async sleepPeriods(date: string): Promise<SleepPeriod[]> {
     // /sleep start_date/end_date do not filter on the document `day` field.
     // Empirically the range behaves like a UTC timestamp window on bedtime_start.
@@ -161,6 +168,13 @@ export class OuraClient {
     return this.range<VO2Max>(ENDPOINTS.vo2Max, { start_date: start, end_date: end });
   }
 
+  async dailyCardiovascularRange(start: string, end: string): Promise<DailyCardiovascularAge[]> {
+    return this.range<DailyCardiovascularAge>(ENDPOINTS.dailyCardiovascularAge, {
+      start_date: start,
+      end_date: end,
+    });
+  }
+
   // ------------------------------------------------------------------------
   // Time series
   // ------------------------------------------------------------------------
@@ -193,6 +207,31 @@ export class OuraClient {
   /** Single-day workouts with the [date, +1) exclusive-end workaround. */
   async workoutsDay(date: string): Promise<Workout[]> {
     return this.requestDayList<Workout>(ENDPOINTS.workout, date);
+  }
+
+  async sessionRange(start: string, end: string): Promise<Session[]> {
+    return this.range<Session>(ENDPOINTS.session, { start_date: start, end_date: end });
+  }
+
+  /** Single-day sessions with the [date, +1) exclusive-end workaround. */
+  async sessionDay(date: string): Promise<Session[]> {
+    return this.requestDayList<Session>(ENDPOINTS.session, date);
+  }
+
+  async enhancedTagRange(start: string, end: string): Promise<EnhancedTag[]> {
+    return this.range<EnhancedTag>(ENDPOINTS.enhancedTag, { start_date: start, end_date: end });
+  }
+
+  /**
+   * Single-day enhanced tags. Windowed on `start_day` (the collection has no
+   * `day` field) with the [date, +1) exclusive-end workaround.
+   */
+  async enhancedTagDay(date: string): Promise<EnhancedTag[]> {
+    const rows = await this.range<EnhancedTag>(ENDPOINTS.enhancedTag, {
+      start_date: date,
+      end_date: nextDay(date),
+    });
+    return rows.filter((row) => row.start_day === date);
   }
 
   // ------------------------------------------------------------------------

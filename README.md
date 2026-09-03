@@ -11,8 +11,8 @@ An **OAuth2-only** TypeScript CLI for the [Oura Ring API v2](https://cloud.ourar
 ## Features
 
 - **Morning briefing** — one command for sleep, readiness, activity, stress, SpO2, resilience, and ring battery
-- **Daily summaries & trends** — `sleep`, `readiness`, `activity`, `stress`, `resilience`, `spo2`, `vo2max` with `--date`, `--days`, and `--start/--end` windows
-- **Time series** — hourly-aggregated heart rate and workout history
+- **Daily summaries & trends** — `sleep`, `readiness`, `activity`, `stress`, `resilience`, `spo2`, `vo2max`, `cardiovascular-age` with `--date`, `--days`, and `--start/--end` windows
+- **Time series** — hourly-aggregated heart rate, workouts, Moments (`sessions`), and lifestyle tags
 - **Agent-friendly output** — JSON automatically when piped, stable keys for chaining, machine-safe stdout
 - **OAuth2 with automatic refresh** — tokens in the OS keyring (or a `0600` config file), refresh-token rotation handled for you
 - **Zero-credential sandbox** — try every command against Oura's sandbox before connecting a real account
@@ -46,6 +46,7 @@ oura --sandbox --table today              # same, as a summary table
 oura --sandbox sleep --days 7             # last week of sleep scores
 oura --sandbox --table sleep --days 7     # sleep trend table
 oura --sandbox workouts --days 3          # recent workouts
+oura --sandbox sessions --days 7          # Moments (meditation, naps, …)
 oura --sandbox --json today | jq '.sleep.score'
 ```
 
@@ -105,7 +106,7 @@ oura today --quiet                  # print just the resolved date (for scriptin
 
 ### Daily summaries & trends
 
-`sleep`, `readiness`, `activity`, `stress`, `resilience`, `spo2`, and `vo2max` share one pattern:
+`sleep`, `readiness`, `activity`, `stress`, `resilience`, `spo2`, `vo2max`, and `cardiovascular-age` share one pattern:
 
 ```bash
 oura sleep                                  # today's sleep score + contributors
@@ -114,6 +115,7 @@ oura sleep-periods --date 2026-01-18 --json # raw sleep sessions for one day
 oura readiness --days 7                     # last 7 days (ending today)
 oura stress --start 2026-01-01 --end 2026-01-07   # an explicit range
 oura activity --table --days 30             # a month of activity as a table
+oura cardiovascular-age --date 2026-01-18   # pulse-wave velocity + vascular age
 ```
 
 ### Raw sleep sessions
@@ -134,9 +136,17 @@ oura heartrate --start 2026-01-18T06:00 --end 2026-01-18T09:00
 oura heartrate --start 2026-01-18 --end 2026-01-20 --bucket max   # avg|min|max|count
 oura workouts --days 7                      # recent workout sessions
 oura workouts --date 2026-01-18             # one day
+oura sessions --days 7                      # Moments: meditation, naps, breathing, …
+oura sessions --date 2026-01-18 --type nap  # one day, naps only
+oura tags --days 14                         # lifestyle events (alcohol, travel, …)
+oura tags --date 2026-01-18                 # tags whose start_day is that date
 ```
 
 Heart rate samples are aggregated into hourly buckets (JSON carries avg/min/max/count per hour). Heart rate requires a **Gen3+ ring** and app sync; an empty range prints a hint on stderr.
+
+`sessions` is the API's Moments collection (`breathing`, `meditation`, `nap`, `relaxation`, `rest`, `body_status`). Table/plain output stays compact (day, type, start/end, mood); `--json` keeps the full document, including heart-rate / HRV / motion sample arrays. `--type` filters client-side and rejects unknown values.
+
+`tags` reads **enhanced_tag** only (the legacy `/tag` collection is not exposed). Table display falls back to `custom_name` for custom tags and marks text-only tags as `(text)`. `--json` is the unmodified source document.
 
 ### Account
 

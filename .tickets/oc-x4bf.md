@@ -1,6 +1,6 @@
 ---
 id: oc-x4bf
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-09-03T22:56:32Z
@@ -34,3 +34,9 @@ It completes the daily-summary command family (sleep, readiness, activity, stres
 - Unit tests cover parsing, column rendering, and the single-day loadDay path with a redacted fixture; failure/auth/timeout behavior is inherited from the shared client and not re-tested.
 - README command list and CHANGELOG (Unreleased > Added) updated; `npm test` and `npm run lint` pass.
 
+
+## Notes
+
+**2026-09-03T23:17:47Z**
+
+Implemented as oura cardiovascular-age via makeDailyCommand (dailyCardiovascular / dailyCardiovascularRange, exclusive-end loadDay). Empty single-day JSON is null, matching the other daily commands.
