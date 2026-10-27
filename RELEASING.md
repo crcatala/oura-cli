@@ -71,11 +71,13 @@ Other forms:
 npm run release -- 0.6.1                 # a specific version, no prompt
 ```
 
-Prereleases are not supported by `npm run release` yet: npm 11 refuses to publish a
-prerelease version without `--tag`, and `scripts/release.mjs` does not pass one. Until the
-shared script does, cut the release with `npm run release -- --preRelease=alpha`, let the
-publish step fail, then publish from the tagged commit with
-`npm publish --tag alpha`.
+A prerelease is published under a dist-tag named after its identifier, so
+`latest` keeps pointing at the last full release:
+
+```bash
+npm run release -- --preRelease=beta    # 0.6.0-beta.0, published as @crcatala/oura-cli@beta
+npm run release -- --preRelease=beta --npm.tag=next    # same version, under "next"
+```
 
 ## When a step fails
 
@@ -87,7 +89,8 @@ publish step fail, then publish from the tagged commit with
   (`gh release create vX.Y.Z --title vX.Y.Z --notes-file <section>`), then run
   `npm run release:publish`.
 - **npm publish** (step 6): the tag is pushed; only the publish is left. Run
-  `npm run release:publish` from the tagged commit.
+  `npm run release:publish` from the tagged commit (it picks the prerelease
+  dist-tag again; `npm run release:publish -- --tag <tag>` chooses another).
 
 ## Verify
 
