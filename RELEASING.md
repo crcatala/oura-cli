@@ -1,107 +1,105 @@
 # Releasing
 
-This project uses [release-it](https://github.com/release-it/release-it) for manual releases
-from a maintainer machine. A release validates the package, updates the changelog and version,
-publishes `@crcatala/oura-cli` to npm, pushes a release commit and tag, and creates a GitHub Release.
+Releases are cut by hand from a clean `main` with
+[release-it](https://github.com/release-it/release-it), wrapped by
+`scripts/release.mjs`. One command bumps the version, moves the changelog's
+Unreleased section into the new version, commits, tags `vX.Y.Z`, pushes,
+creates the GitHub Release, and then publishes `@crcatala/oura-cli` to npm from
+the tagged commit.
+
+Publishing comes last so the published build is stamped with the release
+commit and a clean tree: `oura --version` prints `oura X.Y.Z (sha7 YYYY-MM-DD)`
+from `dist/build-info.json`, which `npm run build` writes. release-it's own npm
+step is turned off in `.release-it.json` because it would publish before the
+commit and tag exist.
 
 ## Prerequisites
 
-- Push access to `crcatala/oura-cli`
-- An npm account with publish access to the `@crcatala` scope (`npm whoami`)
+- Push access to `crcatala/oura-cli`.
 - A GitHub token available as `GITHUB_TOKEN` with repository **Contents: read and write**
-  permission, so release-it can create the GitHub Release
-- Node.js `^22.21.0 || >=24.0.0` (the release-it v21 requirement)
-- A clean checkout on `main`
+  permission, so release-it can create the GitHub Release (without it, release-it opens
+  the GitHub release form in the browser instead).
+- An npm login with publish rights to the `@crcatala` scope: `npm whoami`, else `npm login`.
+- Node.js `^22.21.0 || >=24.0.0` (the release-it v21 requirement).
 
-The package is public and installs the `oura` and `oura-cli` commands.
+The package is public (`publishConfig.access` in `package.json`) and installs the `oura`
+and `oura-cli` commands.
 
 ## Before releasing
 
-1. Update the local `main` branch:
+1. Start from an up-to-date `main`:
 
    ```bash
    git checkout main
    git pull --ff-only
    ```
 
-2. Prepare and update the changelog. The helper lists changes since the last tag and prints a
-   prompt for drafting user-facing entries:
+2. Draft the changelog:
 
    ```bash
    npm run release:prep
    ```
 
-   Add entries below `## [Unreleased]` in `CHANGELOG.md` using [Keep a Changelog] sections such
-   as Added, Changed, Fixed, Removed, or Security.
-
-3. Run the complete local verification suite:
-
-   ```bash
-   npm run verify
-   ```
-
-   This builds TypeScript, runs unit and integration tests, linting, type checking, and
-   smoke-tests the exact `npm pack` tarball with production dependencies installed.
+   Paste the output into an LLM, review the result, and put it under
+   `## [Unreleased]` in `CHANGELOG.md` ([Keep a Changelog] groups: Added, Changed,
+   Fixed, Removed, Security; user-facing changes only). Commit it to `main` and push.
 
 ## Release
 
-For the initial release (when there is no prior release tag), publish the current version:
-
 ```bash
-npm run release:first
+npm run release:dry       # preview; changes nothing and skips the hooks
+npm run release           # asks for the version; or: npm run release -- patch|minor|major
 ```
 
-For all later releases, preview the process first:
+In order, `npm run release`:
+
+1. refuses to start when not logged in to npm or when `HEAD` is already a release;
+2. checks that Unreleased has entries and runs `npm run verify` (build, tests, lint,
+   typecheck, package smoke test);
+3. bumps the version and the changelog, then runs `npm run test:package` (packs the
+   tarball, installs it with production dependencies, checks `--help` and the
+   `--version` format for `oura` and `oura-cli`, plus the checks in
+   `scripts/test-package.local.sh`);
+4. commits `chore: release vX.Y.Z`, tags `vX.Y.Z`, pushes both;
+5. creates the GitHub Release from the changelog section;
+6. publishes to npm from the tagged commit (npm may ask for a one-time password;
+   `prepublishOnly` runs `npm run verify` once more).
+
+Other forms:
 
 ```bash
-npm run release:dry
+npm run release -- 0.6.1                 # a specific version, no prompt
+npm run release -- --preRelease=alpha    # a prerelease
 ```
 
-`release:dry` disables npm and GitHub integrations, so it cannot publish or create a GitHub
-Release. It still requires a clean `main` branch because that is an invariant of the real release.
+## When a step fails
 
-Then release interactively:
+- **Before the commit** (steps 1–3): nothing was changed on the remote. Fix the
+  cause and run `npm run release` again; `git checkout -- .` discards a
+  half-made bump.
+- **GitHub Release** (step 5): the tag is pushed. Create the release from the
+  tag with that version's CHANGELOG section as notes
+  (`gh release create vX.Y.Z --title vX.Y.Z --notes-file <section>`), then run
+  `npm run release:publish`.
+- **npm publish** (step 6): the tag is pushed; only the publish is left. Run
+  `npm run release:publish` from the tagged commit.
 
-```bash
-export GITHUB_TOKEN=github_pat_... # if not already configured
-npm run release
-```
-
-Release-it prompts for the version bump and then:
-
-1. verifies the clean `main` checkout, an unreleased changelog section, and `npm run verify`;
-2. updates `package.json` and moves Unreleased changelog entries into the new version;
-3. packs and smoke-tests the built npm artifact;
-4. commits and tags `vX.Y.Z`;
-5. publishes `@crcatala/oura-cli` publicly to npm;
-6. pushes the release commit and tag; and
-7. creates a GitHub Release using the changelog notes.
-
-Useful recovery options:
+## Verify
 
 ```bash
-# Skip npm publishing if it already succeeded in a partial release
-npm run release -- --no-npm
-
-# Skip GitHub Release creation
-npm run release -- --no-github
-
-# Release a specific version without the bump prompt
-npm run release -- 0.1.1
-
-# Publish a prerelease
-npm run release -- --preRelease=alpha
-```
-
-## Verify the release
-
-```bash
-npm view @crcatala/oura-cli
-npx -y @crcatala/oura-cli@latest --version
+npm view @crcatala/oura-cli version
+npx -y @crcatala/oura-cli@latest --version     # oura X.Y.Z (sha7 YYYY-MM-DD)
 npx -y @crcatala/oura-cli@latest --help
 ```
 
-Published npm versions are immutable. If a release has a defect, publish a corrective version
-rather than replacing the existing version.
+Published npm versions are immutable. If a release has a defect, publish a corrective
+version rather than replacing the existing version.
+
+## Release scripts
+
+`scripts/prep-release.sh`, `scripts/check-changelog.sh`, `scripts/test-package.sh`,
+`scripts/release.mjs` and `scripts/build-info.mjs` are shared copies from the release
+standard (each starts with a `release-standard:` header); do not edit them here.
+Project-specific package checks go in `scripts/test-package.local.sh`.
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/

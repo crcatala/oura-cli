@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `oura update` to update the CLI the way it was installed (npm, pnpm,
+  bun, mise or a source checkout); `oura update --check` only reports and exits
+  1 when an update is available.
+- Added `oura version` to show the version, commit, commit date and install
+  method; honors `--json`.
+
+### Changed
+
+- `oura --version` now prints the commit and its date, for example
+  `oura 0.6.0 (a1b2c3d 2026-10-27)`, with `-dirty` for builds made from
+  uncommitted changes.
+
 ## [0.5.0] - 2026-09-03
 
 ### Added

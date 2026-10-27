@@ -34,8 +34,10 @@ export async function main(
     const useConfig = flag(argv, "--use-config") || Boolean(env.OURA_USE_CONFIG);
     const configDir = env.OURA_CONFIG_DIR;
 
-    // Help/version never need credentials or a keyring.
-    const informational = argv.some((a) => ["--help", "-h", "--version", "-V"].includes(a));
+    // Help, version and update never need credentials or a keyring.
+    const informational =
+      argv.some((a) => ["--help", "-h", "--version", "-V"].includes(a)) ||
+      ["version", "update"].includes(getPositionalArgs(argv)?.[0] ?? "");
 
     const store = informational
       ? createStore({ useConfig: true, configDir: configDir ?? "/tmp" })
