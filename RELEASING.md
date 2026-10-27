@@ -69,8 +69,13 @@ Other forms:
 
 ```bash
 npm run release -- 0.6.1                 # a specific version, no prompt
-npm run release -- --preRelease=alpha    # a prerelease
 ```
+
+Prereleases are not supported by `npm run release` yet: npm 11 refuses to publish a
+prerelease version without `--tag`, and `scripts/release.mjs` does not pass one. Until the
+shared script does, cut the release with `npm run release -- --preRelease=alpha`, let the
+publish step fail, then publish from the tagged commit with
+`npm publish --tag alpha`.
 
 ## When a step fails
 

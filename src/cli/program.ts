@@ -21,6 +21,8 @@ export interface ProgramDeps {
   auth: AuthDeps;
   stdout?: NodeJS.WritableStream;
   stderr?: NodeJS.WritableStream;
+  /** Receives a command's non-error exit code (e.g. `update --check` → 1 when an update exists). */
+  setExitCode?: (code: number) => void;
 }
 
 export function buildProgram(deps: ProgramDeps): Command {
@@ -104,7 +106,7 @@ export function buildProgram(deps: ProgramDeps): Command {
     .option("--check", "Report only: exit 0 up to date, 1 update available, 2 unknown")
     .option("--force", "Update even when already up to date")
     .action((opts: { check?: boolean; force?: boolean }) => {
-      process.exitCode = runUpdate("oura", opts);
+      deps.setExitCode?.(runUpdate("oura", opts));
     });
 
   // ---- daily summaries ----
