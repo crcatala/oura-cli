@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import type { OuraClient } from "../api/client.js";
 import type { CliContext } from "../cli/context.js";
+import { runUpdate, versionDetails, versionLine } from "../cli-meta.js";
 import type { AuthDeps } from "../commands/auth.js";
 import { cmdAuthLogin, cmdAuthLogout, cmdAuthStatus } from "../commands/auth.js";
 import { makeDailyCommand } from "../commands/daily.js";
@@ -12,7 +13,7 @@ import { registerSleepPeriods } from "../commands/sleep-periods.js";
 import { registerTags } from "../commands/tags.js";
 import { registerToday } from "../commands/today.js";
 import { registerWorkouts } from "../commands/workouts.js";
-import { VERSION } from "../version.js";
+import { output } from "../output/index.js";
 
 export interface ProgramDeps {
   ctx: CliContext;
@@ -20,6 +21,8 @@ export interface ProgramDeps {
   auth: AuthDeps;
   stdout?: NodeJS.WritableStream;
   stderr?: NodeJS.WritableStream;
+  /** Receives a command's non-error exit code (e.g. `update --check` → 1 when an update exists). */
+  setExitCode?: (code: number) => void;
 }
 
 export function buildProgram(deps: ProgramDeps): Command {
@@ -37,7 +40,7 @@ export function buildProgram(deps: ProgramDeps): Command {
     .description(
       "Query Oura Ring health data (sleep, readiness, activity, stress, resilience, SpO2, VO2max, cardiovascular age, heart rate, workouts, sessions, tags)",
     )
-    .version(VERSION)
+    .version(versionLine("oura"), "-V, --version", "Print the version and commit")
     .option("--json", "Machine-readable JSON output")
     .option("--plain", "Human-readable plain text")
     .option("--table", "Tabular output")
@@ -84,6 +87,27 @@ export function buildProgram(deps: ProgramDeps): Command {
   registerProfile(program, ctx, client);
   registerSleepPeriods(program, ctx, client);
   registerDoctor(program, ctx, client, auth);
+
+  // ---- version + self-update ----
+  program
+    .command("version")
+    .description("Show version, commit, build date and install method (honors --json)")
+    .action(() => {
+      output(ctx, versionDetails(), {
+        formatter: (data) =>
+          Object.entries(data as Record<string, unknown>)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join("\n"),
+      });
+    });
+  program
+    .command("update")
+    .description("Update oura the way it was installed")
+    .option("--check", "Report only: exit 0 up to date, 1 update available, 2 unknown")
+    .option("--force", "Update even when already up to date")
+    .action((opts: { check?: boolean; force?: boolean }) => {
+      deps.setExitCode?.(runUpdate("oura", opts));
+    });
 
   // ---- daily summaries ----
   makeDailyCommand(program, ctx, client, {

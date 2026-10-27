@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && node scripts/build-info.mjs",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -31,9 +31,9 @@
     "format": "biome format --write src tests",
     "typecheck": "tsc --noEmit",
     "verify": "npm run build && npm run test && npm run lint && npm run typecheck && npm run test:package",
-    "release": "release-it",
-    "release:dry": "release-it --dry-run --no-npm --no-github",
-    "release:first": "release-it --first-release",
+    "release": "node scripts/release.mjs release",
+    "release:dry": "node scripts/release.mjs release --dry-run",
+    "release:publish": "node scripts/release.mjs publish",
     "release:prep": "bash scripts/prep-release.sh",
     "prepack": "npm run build",
     "prepublishOnly": "npm run verify"

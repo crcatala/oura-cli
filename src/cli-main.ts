@@ -34,8 +34,10 @@ export async function main(
     const useConfig = flag(argv, "--use-config") || Boolean(env.OURA_USE_CONFIG);
     const configDir = env.OURA_CONFIG_DIR;
 
-    // Help/version never need credentials or a keyring.
-    const informational = argv.some((a) => ["--help", "-h", "--version", "-V"].includes(a));
+    // Help, version and update never need credentials or a keyring.
+    const informational =
+      argv.some((a) => ["--help", "-h", "--version", "-V"].includes(a)) ||
+      ["version", "update"].includes(commandName(argv) ?? "");
 
     const store = informational
       ? createStore({ useConfig: true, configDir: configDir ?? "/tmp" })
@@ -92,12 +94,16 @@ export async function main(
       fetcher: opts.fetcher,
     });
 
+    let commandExitCode = 0;
     const program = buildProgram({
       ctx,
       client,
       auth: { env, store, fetcher: opts.fetcher, openBrowser: opts.openBrowser, argv },
       stdout: opts.stdout,
       stderr: opts.stderr,
+      setExitCode: (code) => {
+        commandExitCode = code;
+      },
     });
 
     // Commander treats a command with nested subcommands and no subcommand as
@@ -120,7 +126,7 @@ export async function main(
 
     // argv is already user args (run.ts slices the node/script prefix).
     await program.parseAsync(argv, { from: "user" });
-    return 0;
+    return commandExitCode;
   } catch (err) {
     // Convert Commander usage errors (unknown options, etc.) to our
     // clig.dev-compliant exit-code-2 + JSON-envelope contract.
@@ -140,6 +146,20 @@ export async function main(
         : 1;
     return exitCode;
   }
+}
+
+/** The first non-option argument (the command), skipping the value of `--port`. */
+function commandName(argv: string[]): string | undefined {
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--") return argv[i + 1];
+    if (arg === "--port") {
+      i += 1;
+      continue;
+    }
+    if (!arg.startsWith("-")) return arg;
+  }
+  return undefined;
 }
 
 function getPositionalArgs(argv: string[]): string[] | null {

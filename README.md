@@ -22,19 +22,38 @@ An **OAuth2-only** TypeScript CLI for the [Oura Ring API v2](https://cloud.ourar
 - Node.js 22.12+
 - For real data: an Oura Ring (Gen3+ for heart rate) and a registered Oura developer app
 
-## Installation
+## Install
 
 ```bash
 npm install -g @crcatala/oura-cli
+npx @crcatala/oura-cli --help     # run without installing
 ```
 
-Or run it without installing:
+This installs the `oura` command, with `oura-cli` as an alias. Requires Node.js 22.12+.
+
+### From source
 
 ```bash
-npx @crcatala/oura-cli --help
+git clone https://github.com/crcatala/oura-cli.git
+cd oura-cli
+npm install
+npm run build
+npm link                          # puts `oura` on your PATH, pointing at this clone
+oura --version                    # oura X.Y.Z (sha7 YYYY-MM-DD): the commit you built
 ```
 
-This installs the `oura` command, with `oura-cli` as an alias.
+Rebuild after pulling (`npm run build`); the link keeps pointing at the clone.
+If `oura` is also installed globally from npm, remove that copy so the linked build is
+the one on `PATH` (`command -v oura` should resolve inside the clone).
+
+### Updating
+
+```bash
+oura update --check               # exit 0: up to date, 1: update available, 2: unknown
+oura update                       # updates the same way it was installed
+```
+
+`oura version` prints the version, commit, commit date and install method (`--json` for scripts).
 
 ## Quick start (sandbox — no account needed)
 
@@ -154,6 +173,8 @@ Heart rate samples are aggregated into hourly buckets (JSON carries avg/min/max/
 oura profile     # age, biological sex, weight, height, email
 oura doctor      # diagnostics: credential source, token expiry, scopes, storage, API reachability (exits 1 on problems)
 oura auth ...    # login | status | logout
+oura version     # version, commit, install method (oura --version for one line)
+oura update      # update the way it was installed (--check to only report)
 ```
 
 ## Output & scripting
@@ -237,7 +258,7 @@ The **Live Tests** GitHub workflow runs this suite against a same-repo PR when t
 
 ### Releases (maintainers only)
 
-See [RELEASING.md](RELEASING.md) for the release-it + Keep a Changelog workflow, recovery options, and post-publish verification.
+See [RELEASING.md](RELEASING.md) for the release-it + Keep a Changelog workflow (publish to npm runs last, from the tagged commit), recovery options, and post-publish verification.
 
 
 ## Contributing & security

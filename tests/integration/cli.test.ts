@@ -307,8 +307,27 @@ describe("CLI integration (mocked fetch)", () => {
     });
 
     expect(code).toBe(0);
-    expect(cap.out().trim()).toBe(packageJson.version);
+    // In a checkout, a run from src/ reads git: `oura X.Y.Z (sha7[-dirty] YYYY-MM-DD)`.
+    const escaped = packageJson.version.replaceAll(".", "\\.");
+    expect(cap.out().trim()).toMatch(
+      new RegExp(`^oura ${escaped} \\([0-9a-f]{7}(-dirty)? \\d{4}-\\d{2}-\\d{2}\\)$`),
+    );
     expect(VERSION).toBe(packageJson.version);
+  });
+
+  it("prints version details as JSON for `version --json`", async () => {
+    const cap = capture();
+    const packageJson = createRequire(import.meta.url)("../../package.json") as { version: string };
+    const code = await main(["version", "--json"], env(), {
+      stdout: cap.stdout,
+      stderr: cap.stderr,
+    });
+
+    expect(code).toBe(0);
+    const details = JSON.parse(cap.out()) as Record<string, unknown>;
+    expect(details).toMatchObject({ version: packageJson.version, install: "checkout" });
+    expect(details.commit).toMatch(/^[0-9a-f]{40}$/);
+    expect(typeof details.dirty).toBe("boolean");
   });
 
   it("shows help and succeeds when no command is provided", async () => {
